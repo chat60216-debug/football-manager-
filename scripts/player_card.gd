@@ -33,6 +33,15 @@ class PlayerPortrait extends Control:
 		draw_line(Vector2(w*0.46,h*0.49),Vector2(w*0.54,h*0.49),Color("#854f43"),maxf(1.0,w*0.012))
 		draw_rect(Rect2(Vector2(w*0.31,h*0.67),Vector2(w*0.38,h*0.035)),Color(1,1,1,0.65))
 
+func _format_money(value: int) -> String:
+	var raw := str(maxi(0, value))
+	var formatted := ""
+	for i in range(raw.length()):
+		if i > 0 and (raw.length() - i) % 3 == 0:
+			formatted += "."
+		formatted += raw.substr(i, 1)
+	return formatted
+
 func setup(data: Dictionary) -> void:
 	player = data
 	custom_minimum_size = Vector2(145, 226)
@@ -44,11 +53,13 @@ func setup(data: Dictionary) -> void:
 	portrait.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	portrait.seed_value = int(player.get("portrait_seed", player.get("id", 1)))
 	box.add_child(portrait)
+	var rating_value := int(player.get("rating", 0))
 	var rating := Label.new()
-	rating.text = str(player.get("rating", 0)) + " OVR"
+	rating.text = str(rating_value) + " OVR"
 	rating.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	rating.add_theme_font_size_override("font_size", 24)
-	rating.add_theme_color_override("font_color", Color("#8ce5ff"))
+	var rating_color := Color("#e5bd69") if rating_value >= 80 else Color("#8ce5ff") if rating_value >= 68 else Color("#c4d0dc")
+	rating.add_theme_color_override("font_color", rating_color)
 	box.add_child(rating)
 	var pos := Label.new()
 	pos.text = str(player.get("position", ""))
