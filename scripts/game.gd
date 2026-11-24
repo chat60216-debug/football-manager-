@@ -1543,6 +1543,9 @@ func _show_player_detail(player_id: int) -> void:
 	identity.add_child(_profile_line("Età", str(player.get("age", 0)) + " anni"))
 	identity.add_child(_profile_line("Potenziale", str(player.get("potential", 0)) + " OVR"))
 	identity.add_child(_profile_line("Nazionalità", str(player.get("nationality", "Non specificata"))))
+	identity.add_child(_profile_line("Club", str(player.get("club", club_name))))
+	if bool(player.get("loan", false)):
+		identity.add_child(_profile_line("In prestito da", str(player.get("parent_club", "Club proprietario"))))
 	_label("ATTRIBUTI TECNICI E FISICI", 18)
 	var rating := int(player.get("rating", 60))
 	var potential := int(player.get("potential", rating))
