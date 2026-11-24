@@ -41,8 +41,8 @@ func _run_smoke_test() -> void:
 	if game.players.size() < 11:
 		_fail("career squad has fewer than 11 players")
 		return
-	var ai_power_first := game._club_power("Regression FC")
-	var ai_power_second := game._club_power("Regression FC")
+	var ai_power_first: int = game._club_power("Regression FC")
+	var ai_power_second: int = game._club_power("Regression FC")
 	if ai_power_first != ai_power_second:
 		_fail("AI club strength changed between calculations in the same season")
 		return
