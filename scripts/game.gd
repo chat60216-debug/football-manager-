@@ -185,6 +185,10 @@ func _new_career() -> void:
 	european_competitions.clear()
 	qualified_european_comp = ""
 	market_filter = "Tutti"
+	tactics = {"mentalita":"Equilibrata","pressing":"Medio","costruzione":"Mista","linea":"Media","sostituzioni":"Equilibrate"}
+	formation = "4-3-3"
+	lineup_ids.clear()
+	training_focus = "Equilibrio"
 	day = 0
 	cash = 2500000
 	wage_budget = 65000
@@ -1415,7 +1419,11 @@ func _load_game() -> void:
 	cup_teams = d.get("cup_teams",[])
 	cup_winner = str(d.get("cup_winner",""))
 	european_status = str(d.get("european_status","Non qualificato"))
-	tactics = d.get("tactics",tactics)
+	var loaded_tactics: Dictionary = d.get("tactics", tactics)
+	var default_tactics := {"mentalita":"Equilibrata","pressing":"Medio","costruzione":"Mista","linea":"Media","sostituzioni":"Equilibrate"}
+	for tactic_key in default_tactics.keys():
+		if not loaded_tactics.has(tactic_key): loaded_tactics[tactic_key] = default_tactics[tactic_key]
+	tactics = loaded_tactics
 	formation = str(d.get("formation", "4-3-3"))
 	lineup_ids = d.get("lineup_ids", [])
 	training_focus = str(d.get("training_focus", "Equilibrio"))
