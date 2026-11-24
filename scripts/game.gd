@@ -2326,12 +2326,29 @@ func _money(value: int) -> String:
 	return str(value)
 
 func _save_game() -> void:
-	var data := {"save_version":2,"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"manager_name":manager_name,"career_difficulty":career_difficulty,"starting_budget_mode":starting_budget_mode,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"market":market,"observed_players":observed_players,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
-	var file := FileAccess.open(SAVE_PATH,FileAccess.WRITE)
-	if file:
+	var data := {"save_version":2,"saved_at":Time.get_datetime_string_from_system(),"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"manager_name":manager_name,"career_difficulty":career_difficulty,"starting_budget_mode":starting_budget_mode,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"market":market,"observed_players":observed_players,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
+	# Preserve the last valid save before replacing it, so an interrupted write
+	# or damaged JSON can be recovered on the next launch.
+	var previous_file := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if previous_file != null:
+		var previous_text := previous_file.get_as_text()
+		previous_file.close()
+		if typeof(JSON.parse_string(previous_text)) == TYPE_DICTIONARY:
+			var backup_file := FileAccess.open(SAVE_PATH + ".bak", FileAccess.WRITE)
+			if backup_file != null:
+				backup_file.store_string(previous_text)
+				backup_file.flush()
+				backup_file.close()
+	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if file != null:
 		file.store_string(JSON.stringify(data))
+		file.flush()
+		file.close()
 		if is_instance_valid(status_label):
 			status_label.text = "Carriera salvata sul dispositivo."
+	else:
+		if is_instance_valid(status_label):
+			status_label.text = "ERRORE: impossibile salvare la carriera."
 
 
 func _repair_saved_player_ids() -> void:
@@ -2370,15 +2387,26 @@ func _repair_observed_player_links() -> void:
 				break
 
 func _load_game() -> void:
-	if not FileAccess.file_exists(SAVE_PATH):
+	if not FileAccess.file_exists(SAVE_PATH) and not FileAccess.file_exists(SAVE_PATH + ".bak"):
 		_show_setup()
 		return
 	navigation.visible = true
-	var file := FileAccess.open(SAVE_PATH,FileAccess.READ)
-	if file == null:
-		return
-	var parsed = JSON.parse_string(file.get_as_text())
+	var parsed: Variant = null
+	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if file != null:
+		parsed = JSON.parse_string(file.get_as_text())
+		file.close()
 	if typeof(parsed) != TYPE_DICTIONARY:
+		var backup_file := FileAccess.open(SAVE_PATH + ".bak", FileAccess.READ)
+		if backup_file != null:
+			parsed = JSON.parse_string(backup_file.get_as_text())
+			backup_file.close()
+			if typeof(parsed) == TYPE_DICTIONARY and is_instance_valid(status_label):
+				status_label.text = "Salvataggio principale danneggiato: recuperata la copia di sicurezza."
+	if typeof(parsed) != TYPE_DICTIONARY:
+		if is_instance_valid(status_label):
+			status_label.text = "Salvataggio non leggibile: avvia una nuova carriera."
+		_show_setup()
 		return
 	var d: Dictionary = parsed
 	club_name = str(d.get("club_name","Dynasty FC"))
