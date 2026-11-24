@@ -220,6 +220,10 @@ func _run_smoke_test() -> void:
 	if not saved_user_fixture_result:
 		_fail("league match result was not stored for the season calendar")
 		return
+	var recent_results: Array = game._last_results_for_club(5)
+	if recent_results.is_empty() or str(recent_results[0].get("home", "")) != game.club_name and str(recent_results[0].get("away", "")) != game.club_name:
+		_fail("career dashboard did not retrieve the latest result for the user's club")
+		return
 	if game.match_report.get("events", []).size() < 90:
 		_fail("match timeline is not minute-by-minute")
 		return
