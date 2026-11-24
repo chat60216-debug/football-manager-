@@ -1563,8 +1563,8 @@ func _new_season() -> void:
 		awards_text += "\\nMVP: " + str(award_player.get("name", "")) + "  •  " + str(award_player.get("last_rating", 0)) + "/10"
 	if not top_scorer.is_empty():
 		awards_text += "\\nCapocannoniere: " + str(top_scorer.get("name", "")) + "  •  " + str(top_scorer.get("goals", 0)) + " gol"
-	last_season_message = awards_text
 	_finish_season_and_move_club()
+	last_season_message += "\\n" + awards_text
 	season += 1
 	day = 0
 	var expired_contracts: Array = []
