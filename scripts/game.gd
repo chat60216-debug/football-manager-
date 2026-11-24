@@ -225,17 +225,33 @@ func _competition_code(c: String, d: String) -> String:
 	var map := {"Inghilterra|Premier League":"ENG-PL","Inghilterra|Championship":"ENG-CH","Spagna|Liga 1":"ESP-LL","Spagna|Liga 2":"ESP-SD","Italia|Serie A":"ITA-SA","Italia|Serie B":"ITA-SB","Germania|Bundesliga 1":"DEU-BL","Germania|Bundesliga 2":"DEU-B2","Francia|Ligue 1":"FRA-L1","Francia|Ligue 2":"FRA-L2"}
 	return str(map.get(c + "|" + d, ""))
 
+func _serie_c_groups() -> Array:
+	return [
+		["Albinoleffe","Alcione Milano","Arzignano Valchiampo","Carpi","Cittadella","Desenzano","Dolomiti Bellunesi","Folgore Caratese","Giana Erminio","Juventus Next Gen","Lecco","Lumezzane","Novara","Ospitaletto Franciacorta","Pergolettese","Pro Vercelli","Renate","Trento","Treviso","Union Brescia"],
+		["Atalanta U23","Campobasso","Forlì","Grosseto","Gubbio","Guidonia Montecelio","Latina","Livorno","Ostiamare","Perugia","Pescara","Pianese","Pineto","Ravenna","Reggiana","Sambenedettese","Spezia","Torres","Vado","Vis Pesaro"],
+		["Altamura","Audace Cerignola","Bari","Barletta","Casarano","Casertana","Catania","Cavese","Cosenza","Crotone","Foggia","Giugliano","Inter U23","Monopoli","Picerno","Potenza","Salernitana","Savoia","Scafatese","Sorrento"]
+	]
+
 func _update_setup_real_clubs() -> void:
 	if not is_instance_valid(setup_real_club) or not is_instance_valid(setup_division):
 		return
 	setup_real_club.clear()
 	setup_real_club.add_item("Club personalizzato")
 	var code := _competition_code(country, setup_division.get_item_text(setup_division.selected))
-	if code != "" and real_roster_db.has(code):
+	var names: Array = []
+	if country == "Italia" and setup_division.get_item_text(setup_division.selected) == "Serie C":
+		for group in _serie_c_groups(): names.append_array(group)
+	elif code != "" and real_roster_db.has(code):
 		var clubs: Dictionary = real_roster_db[code].get("clubs", {})
-		var names: Array = clubs.keys()
-		names.sort()
-		for club in names:
+		names = clubs.keys()
+	else:
+		var old_division := division
+		division = setup_division.get_item_text(setup_division.selected)
+		names = _league_team_names()
+		division = old_division
+	names.sort()
+	for club in names:
+		if not setup_real_club.has_item(str(club)):
 			setup_real_club.add_item(str(club))
 
 func _players_for_real_club(club: String) -> Array:
@@ -282,6 +298,10 @@ func _league_team_names() -> Array:
 	if pyramid_state.has(pyramid_key):
 		return pyramid_state[pyramid_key].duplicate()
 	var real_code := _competition_code(country, division)
+	if country == "Italia" and division == "Serie C":
+		for group in _serie_c_groups():
+			if group.has(club_name): return group.duplicate()
+		return _serie_c_groups()[randi_range(0, 2)].duplicate()
 	if real_code != "" and real_roster_db.has(real_code):
 		var real_clubs: Dictionary = real_roster_db[real_code].get("clubs", {})
 		if real_clubs.size() > 0:
@@ -306,10 +326,10 @@ func _league_team_names() -> Array:
 		return db[key].duplicate()
 	var known: Array = []
 	match country:
-		"Italia": known = ["Albinoleffe","Alcione Milano","Arzignano Valchiampo","Atalanta U23","Brescia","Caldiero Terme","Cavese","Cittadella","Crotone","Foggia","Giana Erminio","Gubbio","Latina","Lecco","Lumezzane","Novara","Perugia","Pescara","Pro Patria","Pro Vercelli","Renate","Rimini","Ternana","Triestina","Trapani","Virtus Verona"]
+		"Italia": known = ["Albinoleffe","Alcione Milano","Arzignano Valchiampo","Carpi","Cittadella","Desenzano","Dolomiti Bellunesi","Folgore Caratese","Giana Erminio","Juventus Next Gen","Lecco","Lumezzane","Novara","Ospitaletto Franciacorta","Pergolettese","Pro Vercelli","Renate","Trento","Treviso","Union Brescia"]
 		"Inghilterra": known = ["Birmingham City","Blackburn Rovers","Blackpool","Bolton Wanderers","Bradford City","Cardiff City","Charlton Athletic","Huddersfield Town","Leicester City","Middlesbrough","Millwall","Norwich City","Oxford United","Portsmouth","Preston North End","Queens Park Rangers","Reading","Sheffield United","Sheffield Wednesday","Stoke City","Swansea City","Watford","West Bromwich Albion","Wrexham"]
 		"Spagna": known = ["Albacete","Almería","Burgos CF","Cádiz CF","CD Castellón","CD Leganés","CD Mirandés","Córdoba CF","Eibar","FC Andorra","Granada CF","Huesca","Las Palmas","Real Oviedo","Real Zaragoza","Sporting Gijón","Tenerife","Valladolid"]
-		"Francia": known = ["Amiens SC","AS Saint-Étienne","Clermont Foot","EA Guingamp","FC Annecy","FC Metz","Grenoble Foot 38","Montpellier HSC","Pau FC","Red Star FC","SC Bastia","Stade Lavallois","USL Dunkerque"]
+		"Francia": known = ["FC Rouen 1899","Fleury 91","FC Versailles 78","US Orléans","Le Puy Foot 43","SM Caen","US Concarneau","Valenciennes FC","SC Aubagne Air-Bel","FC Villefranche-Beaujolais","Quevilly Rouen Métropole","Paris 13 Atletico","Bourg-en-Bresse 01","Amiens SC","SC Bastia","VFC La Roche-sur-Yon","US Thionville Lusitanos","AS Cannes"]
 		"Germania": known = ["VfL Wolfsburg","1. FC Heidenheim","FC St. Pauli","Hannover 96","SV Darmstadt 98","1. FC Kaiserslautern","Hertha BSC","1. FC Nürnberg","VfL Bochum","Karlsruher SC","Dynamo Dresden","Holstein Kiel","Arminia Bielefeld","1. FC Magdeburg","Eintracht Braunschweig","Greuther Fürth","Energie Cottbus","VfL Osnabrück"]
 	var target := 20
 	if division in ["Championship","League One","League Two"]:
