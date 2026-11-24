@@ -31,7 +31,7 @@ func _run_smoke_test() -> void:
 	if game.players.size() < 11:
 		_fail("career squad has fewer than 11 players")
 		return
-	var real_count := game.players.filter(func(p): return bool(p.get("real_player", false))).size()
+	var real_count: int = game.players.filter(func(p): return bool(p.get("real_player", false))).size()
 	if real_count < 11:
 		_fail("real 2026/27 player squad was not imported")
 		return
