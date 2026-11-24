@@ -84,6 +84,9 @@ func setup(data: Dictionary) -> void:
 	elif suspension_turns > 0:
 		condition.text = "SQUALIFICATO • " + str(suspension_turns) + " turni"
 		condition.add_theme_color_override("font_color", Color("#ffbd69"))
+	elif bool(player.get("loan", false)):
+		condition.text = "IN PRESTITO • DA " + str(player.get("parent_club", "Club proprietario"))
+		condition.add_theme_color_override("font_color", Color("#e5bd69"))
 	else:
 		condition.text = "Morale " + str(player.get("morale", 70)) + "% • Contratto " + str(player.get("contract", 0)) + " anni"
 		condition.add_theme_color_override("font_color", Color("#9fc6b4"))
