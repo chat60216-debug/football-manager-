@@ -1004,7 +1004,90 @@ func _show_squad() -> void:
 		card.swap_requested.connect(_swap_players)
 		card.sell_requested.connect(_sell_player)
 		card.renew_requested.connect(_renew_player_contract)
+		card.detail_requested.connect(_show_player_detail)
 		grid.add_child(card)
+
+func _show_player_detail(player_id: int) -> void:
+	var player: Dictionary = {}
+	for candidate in players:
+		if int(candidate.get("id", -1)) == player_id:
+			player = candidate
+			break
+	if player.is_empty():
+		return
+	_clear_content()
+	_label("PLAYER PROFILE  /  DYNASTY SCOUTING", 14)
+	var hero := PanelContainer.new()
+	content.add_child(hero)
+	var hero_row := HBoxContainer.new()
+	hero.add_child(hero_row)
+	var portrait = preload("res://scripts/player_portrait.gd").new()
+	portrait.custom_minimum_size = Vector2(126, 150)
+	portrait.seed_value = int(player.get("portrait_seed", player_id))
+	hero_row.add_child(portrait)
+	var identity := VBoxContainer.new()
+	identity.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hero_row.add_child(identity)
+	var name_label := Label.new()
+	name_label.text = str(player.get("name", "Giocatore"))
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_label.add_theme_font_size_override("font_size", 20)
+	identity.add_child(name_label)
+	var overall := Label.new()
+	overall.text = str(player.get("rating", 0)) + " OVR  •  " + str(player.get("position", ""))
+	overall.add_theme_font_size_override("font_size", 23)
+	overall.add_theme_color_override("font_color", Color("#67e6f4"))
+	identity.add_child(overall)
+	identity.add_child(_profile_line("Età", str(player.get("age", 0)) + " anni"))
+	identity.add_child(_profile_line("Potenziale", str(player.get("potential", 0)) + " OVR"))
+	identity.add_child(_profile_line("Nazionalità", str(player.get("nationality", "Non specificata"))))
+	_label("ATTRIBUTI TECNICI E FISICI", 18)
+	var rating := int(player.get("rating", 60))
+	var potential := int(player.get("potential", rating))
+	var position := str(player.get("position", "CC"))
+	var attributes := {
+		"Velocità": clampi(rating + (8 if position in ["AD","AS","TD","TS"] else 0) - 4, 25, 99),
+		"Tiro": clampi(rating + (10 if position in ["ATT","AD","AS"] else -5), 25, 99),
+		"Passaggio": clampi(rating + (8 if position in ["CC","COC","CDC"] else -3), 25, 99),
+		"Dribbling": clampi(rating + (7 if position in ["AD","AS","COC"] else 0), 25, 99),
+		"Difesa": clampi(rating + (12 if position in ["DC","TD","TS","CDC"] else -12), 20, 99),
+		"Fisico": clampi(rating + (6 if position in ["DC","ATT"] else 0), 25, 99)
+	}
+	for attribute in attributes.keys():
+		var row := HBoxContainer.new()
+		content.add_child(row)
+		var caption := Label.new()
+		caption.text = attribute
+		caption.custom_minimum_size = Vector2(92, 26)
+		row.add_child(caption)
+		var bar := ProgressBar.new()
+		bar.min_value = 0
+		bar.max_value = 100
+		bar.value = int(attributes[attribute])
+		bar.show_percentage = false
+		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(bar)
+		var score := Label.new()
+		score.text = str(attributes[attribute])
+		score.custom_minimum_size = Vector2(28, 24)
+		row.add_child(score)
+	_label("PERCORSO DI CRESCITA", 18)
+	var chart = preload("res://scripts/player_growth_chart.gd").new()
+	chart.setup(rating, potential, int(player.get("age", 22)))
+	content.add_child(chart)
+	_label("STATISTICHE STAGIONALI", 18)
+	_label("Presenze: " + str(player.get("apps", 0)) + "  •  Gol: " + str(player.get("goals", 0)) + "  •  Assist: " + str(player.get("assists", 0)))
+	_label("Forma: " + str(player.get("fitness", 0)) + "%  •  Morale: " + str(player.get("morale", 0)) + "%  •  Ultima valutazione: " + str(player.get("last_rating", "—")))
+	_label("Valore stimato: €" + _money(int(player.get("value", 0))) + "  •  Ingaggio: €" + _money(int(player.get("wage", 0))) + "/sett.")
+	_button("RINNOVA CONTRATTO", func(): _renew_player_contract(player_id))
+	_button("TORNA ALLA ROSA", _show_squad)
+
+func _profile_line(caption: String, value: String) -> Label:
+	var line := Label.new()
+	line.text = caption + ": " + value
+	line.add_theme_font_size_override("font_size", 13)
+	line.add_theme_color_override("font_color", Color("#b8cce0"))
+	return line
 
 func _swap_players(source_id: int, target_id: int) -> void:
 	var source_index := -1
@@ -1069,9 +1152,33 @@ func _negotiate(index: int) -> void:
 	selected_market_player = index
 	var p: Dictionary = market[index]
 	_clear_content()
-	_label("TRATTATIVA: "+p.name,22)
-	_label(p.position+" • "+str(p.age)+" anni • "+str(p.rating)+" OVR • Potenziale "+str(p.potential))
-	_label("Valore richiesto: €"+_money(p.value)+" • Ingaggio: €"+_money(p.wage)+"/sett.")
+	_label("DYNASTY TRANSFER ROOM  /  NEGOZIAZIONE", 14)
+	var player_panel := PanelContainer.new()
+	content.add_child(player_panel)
+	var player_row := HBoxContainer.new()
+	player_panel.add_child(player_row)
+	var portrait = preload("res://scripts/player_portrait.gd").new()
+	portrait.custom_minimum_size = Vector2(112, 132)
+	portrait.seed_value = int(p.get("portrait_seed", p.get("id", 1)))
+	player_row.add_child(portrait)
+	var bio := VBoxContainer.new()
+	bio.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	player_row.add_child(bio)
+	var player_name := Label.new()
+	player_name.text = str(p.get("name", "Giocatore"))
+	player_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	player_name.add_theme_font_size_override("font_size", 20)
+	bio.add_child(player_name)
+	var ovr := Label.new()
+	ovr.text = str(p.position) + "  •  " + str(p.rating) + " OVR"
+	ovr.add_theme_font_size_override("font_size", 22)
+	ovr.add_theme_color_override("font_color", Color("#67e6f4"))
+	bio.add_child(ovr)
+	bio.add_child(_profile_line("Età / POT", str(p.age) + " anni / " + str(p.potential)))
+	bio.add_child(_profile_line("Club", str(p.get("club", "Club proprietario"))))
+	bio.add_child(_profile_line("Ingaggio", "€" + _money(int(p.wage)) + "/sett."))
+	_label("FASE 1  •  ACCORDO TRA CLUB", 17)
+	_label("Valore richiesto: €"+_money(p.value)+"  •  Definisci il cartellino da offrire.")
 	_label("Offerta trasferimento (€)")
 	market_fee = SpinBox.new()
 	market_fee.min_value = 0
@@ -1079,6 +1186,7 @@ func _negotiate(index: int) -> void:
 	market_fee.step = 25000
 	market_fee.value = p.value
 	content.add_child(market_fee)
+	_label("FASE 2  •  ACCORDO CON IL CALCIATORE", 17)
 	_label("Ingaggio settimanale (€)")
 	market_wage = SpinBox.new()
 	market_wage.min_value = 500
@@ -1098,7 +1206,9 @@ func _negotiate(index: int) -> void:
 		market_role.add_item(role)
 	market_role.select(1)
 	content.add_child(market_role)
-	_button("INVIA OFFERTA",_submit_offer)
+	_label("FASE 3  •  RUOLO E PROGETTO SPORTIVO", 17)
+	_label("La probabilità di accettazione dipende da offerta, stipendio, ruolo e prestigio della squadra.")
+	_button("INVIA OFFERTA UFFICIALE",_submit_offer)
 	_button("CHIEDI PRESTITO (1 STAGIONE)",_submit_loan_offer)
 	_button("Torna al mercato",_show_market)
 
@@ -1441,6 +1551,19 @@ func _new_season() -> void:
 	if day < fixtures.size():
 		_label("Devi completare il campionato prima di avviare una nuova stagione.")
 		return
+	var award_player: Dictionary = {}
+	var top_scorer: Dictionary = {}
+	for candidate in players:
+		if award_player.is_empty() or float(candidate.get("last_rating", 0.0)) > float(award_player.get("last_rating", 0.0)):
+			award_player = candidate
+		if top_scorer.is_empty() or int(candidate.get("goals", 0)) > int(top_scorer.get("goals", 0)):
+			top_scorer = candidate
+	var awards_text := "🏆 PREMI DI FINE STAGIONE"
+	if not award_player.is_empty():
+		awards_text += "\\nMVP: " + str(award_player.get("name", "")) + "  •  " + str(award_player.get("last_rating", 0)) + "/10"
+	if not top_scorer.is_empty():
+		awards_text += "\\nCapocannoniere: " + str(top_scorer.get("name", "")) + "  •  " + str(top_scorer.get("goals", 0)) + " gol"
+	last_season_message = awards_text
 	_finish_season_and_move_club()
 	season += 1
 	day = 0
