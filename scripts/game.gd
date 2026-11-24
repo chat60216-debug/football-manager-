@@ -727,6 +727,7 @@ func _set_lineup_player(slot_index: int, player_index: int) -> void:
 	if previous_slot >= 0 and previous_slot != slot_index:
 		lineup_ids[previous_slot] = old_id
 	_save_game()
+	_show_formation()
 
 func _apply_player_match(goals: int, conceded: int, substitutions: Array = []) -> void:
 	_ensure_lineup()
