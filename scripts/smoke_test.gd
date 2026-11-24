@@ -311,6 +311,35 @@ func _run_smoke_test() -> void:
 	if not saved_loan_found:
 		_fail("accepted loan did not persist when the scouting shortlist was empty")
 		return
+	# Permanent transfer regression: the new player must be registered to the user's club.
+	if game.market.is_empty():
+		_fail("transfer market was empty before permanent transfer regression")
+		return
+	var permanent_source: Dictionary = game.market[0]
+	var original_permanent_club := str(permanent_source.get("club", ""))
+	game.cash = 50000000
+	game.wage_budget = 5000000
+	game._negotiate(0)
+	game.market_fee.value = minf(50000000.0, float(permanent_source.get("value", 1000000)) * 2.0)
+	game.market_wage.value = minf(50000.0, float(permanent_source.get("wage", 1000)) * 2.0)
+	game.market_years.value = 3
+	game.market_role.select(1)
+	var players_before_purchase: int = game.players.size()
+	for _attempt in range(60):
+		if game.players.size() > players_before_purchase:
+			break
+		game._submit_offer()
+	if game.players.size() != players_before_purchase + 1:
+		_fail("permanent transfer offer was not accepted despite a strong financial offer")
+		return
+	var permanent_transfer_correct := false
+	for squad_player in game.players:
+		if str(squad_player.get("previous_club", "")) == original_permanent_club and str(squad_player.get("club", "")) == game.club_name:
+			permanent_transfer_correct = true
+			break
+	if not permanent_transfer_correct:
+		_fail("signed player did not move from the selling club to the user's club")
+		return
 	game._show_formation()
 	await process_frame
 	var captain_selector_found := false
