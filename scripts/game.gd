@@ -32,6 +32,18 @@ var youth_players: Array = []
 var staff := {"coach":0,"scout":0,"physio":0,"academy":0}
 var season_history: Array = []
 var last_season_message := ""
+var real_roster_db: Dictionary = {}
+var setup_real_club: OptionButton
+var pyramid_state: Dictionary = {}
+var sponsor_contract: Dictionary = {}
+var facilities := {"training":1,"stadium":1,"medical":1,"academy":1}
+var board_objective: Dictionary = {}
+var board_confidence := 75
+var match_report: Dictionary = {}
+var european_competitions: Dictionary = {}
+var qualified_european_comp := ""
+var selected_sub_out := -1
+var selected_sub_in := -1
 var selected_tab := "Home"
 var root: VBoxContainer
 var content: VBoxContainer
@@ -48,6 +60,7 @@ var ui_built := false
 
 func _ready() -> void:
 	randomize()
+	_load_real_roster_database()
 	_build_shell()
 	if FileAccess.file_exists(SAVE_PATH):
 		_add_button("Carica carriera salvata", _load_game)
@@ -80,7 +93,7 @@ func _build_shell() -> void:
 	var nav := GridContainer.new()
 	nav.columns = 3
 	root.add_child(nav)
-	for tab in ["Home","Rosa","Formazione","Mercato","Classifica","Coppe","Club","Giovanili","Staff","Statistiche"]:
+	for tab in ["Home","Rosa","Formazione","Mercato","Classifica","Coppe","UEFA","Club","Giovanili","Staff","Statistiche","Società"]:
 		var b := Button.new()
 		b.text = tab
 		b.custom_minimum_size = Vector2(0, 44)
@@ -138,9 +151,12 @@ func _show_setup() -> void:
 	_label("Divisione")
 	setup_division = OptionButton.new()
 	content.add_child(setup_division)
+	_label("Scegli un club reale (facoltativo)")
+	setup_real_club = OptionButton.new()
+	content.add_child(setup_real_club)
 	_country_changed(0)
 	_button("INIZIA LA CARRIERA", _new_career)
-	_label("Rosa, avversari e giocatori di mercato generati proceduralmente. Ogni carriera è diversa.")
+	_label("Scegli un club reale per importare la rosa 2026/27 quando disponibile. Le divisioni senza rose certificate useranno giocatori generati, chiaramente indicati.")
 
 func _country_changed(index: int) -> void:
 	if not is_instance_valid(setup_country) or not is_instance_valid(setup_division):
@@ -150,9 +166,12 @@ func _country_changed(index: int) -> void:
 	for d in DIVISIONS[country]:
 		setup_division.add_item(d)
 	setup_division.select(DIVISIONS[country].size() - 1)
+	_update_setup_real_clubs()
 
 func _new_career() -> void:
 	club_name = setup_name.text.strip_edges()
+	if is_instance_valid(setup_real_club) and setup_real_club.selected > 0:
+		club_name = setup_real_club.get_item_text(setup_real_club.selected)
 	if club_name.is_empty():
 		club_name = "Dynasty FC"
 	country = COUNTRIES[setup_country.selected]
@@ -163,14 +182,23 @@ func _new_career() -> void:
 	cash = 2500000
 	wage_budget = 65000
 	players.clear()
-	for i in range(22):
-		players.append(_make_player(i))
+	staff = {"coach":0,"scout":0,"physio":0,"academy":0}
+	for real_player in _players_for_real_club(club_name):
+		players.append(real_player)
+	for i in range(maxi(0, 22 - players.size())):
+		var generated_player: Dictionary = _make_player(i)
+		generated_player["generated"] = true
+		players.append(generated_player)
 	_ensure_lineup()
 	_generate_league()
-	staff = {"coach":0,"scout":0,"physio":0,"academy":0}
+	_initialise_pyramid()
+	_initialise_club_business()
 	_generate_market()
 	youth_players.clear()
 	season_history.clear()
+	match_report.clear()
+	european_competitions.clear()
+	qualified_european_comp = ""
 	_generate_youth_intake()
 	cup_round = 0
 	cup_teams = [club_name] + CLUBS.slice(0, 7)
@@ -179,6 +207,67 @@ func _new_career() -> void:
 	_save_game()
 	_show_tab("Home")
 
+func _load_real_roster_database() -> void:
+	real_roster_db.clear()
+	if not FileAccess.file_exists("res://data/real_rosters.json"):
+		return
+	var file := FileAccess.open("res://data/real_rosters.json", FileAccess.READ)
+	if file == null:
+		return
+	var parsed = JSON.parse_string(file.get_as_text())
+	if typeof(parsed) == TYPE_DICTIONARY:
+		real_roster_db = parsed.get("competitions", {})
+
+func _competition_code(c: String, d: String) -> String:
+	var map := {"Inghilterra|Premier League":"ENG-PL","Inghilterra|Championship":"ENG-CH","Spagna|Liga 1":"ESP-LL","Spagna|Liga 2":"ESP-SD","Italia|Serie A":"ITA-SA","Italia|Serie B":"ITA-SB","Germania|Bundesliga 1":"DEU-BL","Germania|Bundesliga 2":"DEU-B2","Francia|Ligue 1":"FRA-L1","Francia|Ligue 2":"FRA-L2"}
+	return str(map.get(c + "|" + d, ""))
+
+func _update_setup_real_clubs() -> void:
+	if not is_instance_valid(setup_real_club) or not is_instance_valid(setup_division):
+		return
+	setup_real_club.clear()
+	setup_real_club.add_item("Club personalizzato")
+	var code := _competition_code(country, setup_division.get_item_text(setup_division.selected))
+	if code != "" and real_roster_db.has(code):
+		var clubs: Dictionary = real_roster_db[code].get("clubs", {})
+		var names: Array = clubs.keys()
+		names.sort()
+		for club in names:
+			setup_real_club.add_item(str(club))
+
+func _players_for_real_club(club: String) -> Array:
+	var result: Array = []
+	var code := _competition_code(country, division)
+	if code == "" or not real_roster_db.has(code):
+		return result
+	var clubs: Dictionary = real_roster_db[code].get("clubs", {})
+	var chosen := club if clubs.has(club) else ""
+	if chosen == "":
+		var normal := club.to_lower().replace(" ", "").replace(".", "").replace("-", "")
+		for candidate in clubs.keys():
+			var other := str(candidate).to_lower().replace(" ", "").replace(".", "").replace("-", "")
+			if normal == other or (normal.length() >= 4 and other.contains(normal)) or (other.length() >= 4 and normal.contains(other)):
+				chosen = str(candidate)
+				break
+	if chosen == "": return result
+	var rows: Array = clubs[chosen].get("players", [])
+	var base_rating := 67
+	if division in ["Premier League","Liga 1","Serie A","Ligue 1","Bundesliga 1"]: base_rating = 73
+	for i in range(rows.size()):
+		var row: Dictionary = rows[i]
+		var raw_pos := str(row.get("position", ""))
+		var pos := "CC"
+		if raw_pos == "GK": pos = "POR"
+		elif raw_pos == "DF": pos = ["DC","TD","TS"][i % 3]
+		elif raw_pos == "FW": pos = ["ATT","AS","AD"][i % 3]
+		elif raw_pos == "MF": pos = ["CC","CDC","COC"][i % 3]
+		var rating := clampi(base_rating + randi_range(-10, 10), 48, 91)
+		var identity := str(row.get("qid", ""))
+		if identity == "": identity = str(row.get("name", ""))
+		var player_id := absi(hash(identity + "|" + chosen))
+		result.append({"id":player_id,"portrait_seed":player_id,"name":str(row.get("name","Player")),"position":pos,"age":randi_range(18,34),"rating":rating,"potential":mini(94,rating+randi_range(2,16)),"wage":rating*65,"value":rating*rating*1350,"morale":randi_range(65,88),"fitness":100,"injury":0,"contract":randi_range(1,4),"role":ROLES[i % ROLES.size()],"goals":0,"assists":0,"apps":0,"yellow":0,"red":0,"nationality":str(row.get("nationality","")),"shirt_number":int(row.get("number",0)),"real_player":true,"source":"OpenFootballBase"})
+	return result
+
 func _make_player(index: int) -> Dictionary:
 	var pos: String = POSITIONS[index % POSITIONS.size()]
 	var rating := randi_range(54, 76)
@@ -186,6 +275,13 @@ func _make_player(index: int) -> Dictionary:
 	return {"id":randi(),"portrait_seed":randi(),"name":FIRST.pick_random()+" "+LAST.pick_random(),"position":pos,"age":age,"rating":rating,"potential":mini(92,rating+randi_range(2,20)),"wage":randi_range(900,4200),"value":rating*rating*1200,"morale":randi_range(65,90),"fitness":randi_range(82,100),"injury":0,"contract":randi_range(1,4),"role":ROLES.pick_random(),"goals":0,"assists":0,"apps":0,"yellow":0,"red":0}
 
 func _league_team_names() -> Array:
+	var real_code := _competition_code(country, division)
+	if real_code != "" and real_roster_db.has(real_code):
+		var real_clubs: Dictionary = real_roster_db[real_code].get("clubs", {})
+		if real_clubs.size() > 0:
+			var imported_names: Array = real_clubs.keys()
+			imported_names.sort()
+			return imported_names
 	var key := country + "|" + division
 	var db := {
 		"Italia|Serie A":["Atalanta","Bologna","Cagliari","Como","Fiorentina","Frosinone","Genoa","Inter","Juventus","Lazio","Lecce","Milan","Monza","Napoli","Parma","Roma","Sassuolo","Torino","Udinese","Venezia"],
@@ -288,6 +384,8 @@ func _show_tab(tab: String) -> void:
 		"Giovanili": _show_youth()
 		"Staff": _show_staff()
 		"Statistiche": _show_stats()
+		"UEFA": _show_uefa()
+		"Società": _show_society()
 
 func _show_home() -> void:
 	_clear_content()
@@ -1061,7 +1159,7 @@ func _money(value: int) -> String:
 	return str(value)
 
 func _save_game() -> void:
-	var data := {"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"market":market,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"last_season_message":last_season_message}
+	var data := {"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"market":market,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
 	var file := FileAccess.open(SAVE_PATH,FileAccess.WRITE)
 	if file:
 		file.store_string(JSON.stringify(data))
@@ -1102,6 +1200,14 @@ func _load_game() -> void:
 	lineup_ids = d.get("lineup_ids", [])
 	training_focus = str(d.get("training_focus", "Equilibrio"))
 	last_season_message = str(d.get("last_season_message", ""))
+	pyramid_state = d.get("pyramid_state", {})
+	sponsor_contract = d.get("sponsor_contract", {})
+	facilities = d.get("facilities", facilities)
+	board_objective = d.get("board_objective", {})
+	board_confidence = int(d.get("board_confidence", 75))
+	match_report = d.get("match_report", {})
+	european_competitions = d.get("european_competitions", {})
+	qualified_european_comp = str(d.get("qualified_european_comp", ""))
 	_ensure_lineup()
 	# Migrazione automatica delle vecchie carriere con calendario fisso da 16 club.
 	if league.size() == 16 or fixtures.size() == 30:
