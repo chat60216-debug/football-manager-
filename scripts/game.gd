@@ -450,6 +450,7 @@ func _new_career() -> void:
 			cash = 2500000
 			wage_budget = 65000
 	players.clear()
+	observed_players.clear()
 	staff = {"coach":0,"scout":0,"physio":0,"academy":0}
 	for real_player in _players_for_real_club(club_name):
 		players.append(real_player)
