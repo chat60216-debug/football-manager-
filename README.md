@@ -11,12 +11,13 @@ Football management career game for Android, built with Godot 4.4.1.
 - Where the upstream dataset does not publish complete squads (Serie C, English League One/Two and French Ligue 3), the game uses verified club lists and generated players, visibly labelled as generated.
 - Every player card has a unique generated avatar. These are stylized avatars, not photographs or likenesses of real footballers.
 - Full season fixture generation, league standings, matchday simulation and season history.
+- Headless regression smoke test runs before every Android export, covering real squad import, match reports, UEFA progression, tactical lineup swaps, facility upgrades and promotion.
 - User-club and AI-club promotion/relegation within the selected country's pyramid, with generic end-of-season promotion playoffs.
 - Playable national cup prototype and playable UEFA Champions League, Europa League and Conference League simulations. UEFA competitions use two groups of four, semifinals and a final; qualification is based on domestic results or the cup.
 - Match report with a 1–90 minute commentary timeline, goals, cards, substitutions and player ratings. Substitution timing can be set to early, balanced or late.
 - Interactive tactical pitch: drag a player marker to another position to swap the two starters; formation and lineup are saved.
 - Tactical instructions influence team strength.
-- Transfer market filters for U21 players, bargains and high-rated players; offers are evaluated probabilistically using fee, wage, role and club prestige.
+- Transfer market mixes imported real players from the bundled database with generated prospects; filters cover real players, U21 players, bargains and high-rated players. Offers use fee, wage, role and club prestige.
 - Loans, contract renewals, contract expiry and weekly wage accounting.
 - Youth academy, generated prospects, player promotion and staff upgrades.
 - Club management: sponsor contracts, board objectives, confidence and upgradeable training, stadium, medical and academy facilities.
