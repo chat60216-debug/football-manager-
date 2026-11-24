@@ -305,6 +305,11 @@ func _run_smoke_test() -> void:
 			break
 	var wage_budget_before_loan_renewal := int(game.wage_budget)
 	game._renew_player_contract(loaned_player_id)
+	var cash_before_loan_sale := int(game.cash)
+	game._sell_player(loaned_player_id)
+	if int(game.cash) != cash_before_loan_sale or game.players.filter(func(p): return int(p.get("id", -1)) == loaned_player_id).is_empty():
+		_fail("temporary loan player could be sold by the user's club")
+		return
 	for squad_player in game.players:
 		if int(squad_player.get("id", -2)) == loaned_player_id and (int(squad_player.get("contract", 0)) != loaned_player_contract or int(game.wage_budget) != wage_budget_before_loan_renewal):
 			_fail("loan contract renewal incorrectly changed the temporary contract or wage budget")
