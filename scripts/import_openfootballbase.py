@@ -55,7 +55,7 @@ def main():
     """).fetchall()
     output = {
         "season": SEASON,
-        "generated_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "source": "OpenFootballBase-Data release; Wikipedia CC BY-SA 4.0 / Wikidata CC0",
         "source_url": "https://github.com/florentfougeres/OpenFootballBase-Data",
         "competitions": {}
