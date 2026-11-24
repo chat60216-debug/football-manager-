@@ -80,7 +80,8 @@ jobs:
           test -f "$RUNNER_TEMP/android-debug.keystore"
           test -d "$JAVA_HOME"
           echo "Android SDK, Java and debug keystore paths verified."
-          cat "$HOME/.config/godot/editor_settings-4.tres"
+          cat "$HOME/.config/godot/editor_settings-4.4.tres"
+          test -s "$HOME/.config/godot/editor_settings-4.4.tres"
 
       - name: Import project
         run: godot --headless --editor --path . --quit
