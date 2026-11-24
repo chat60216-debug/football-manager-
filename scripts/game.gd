@@ -942,6 +942,29 @@ func _show_home() -> void:
 		news_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		news_label.add_theme_font_size_override("font_size", 12)
 		news_box.add_child(news_label)
+	var recent_results := _last_results_for_club(5)
+	if not recent_results.is_empty():
+		var results_card := PanelContainer.new()
+		right.add_child(results_card)
+		var results_box := VBoxContainer.new()
+		results_card.add_child(results_box)
+		var results_title := Label.new()
+		results_title.text = "ULTIMI RISULTATI"
+		results_title.add_theme_color_override("font_color", Color("#d6b66f"))
+		results_box.add_child(results_title)
+		for result in recent_results:
+			var is_home := str(result.get("home", "")) == club_name
+			var opponent := str(result.get("away", "") if is_home else result.get("home", ""))
+			var home_goals := int(result.get("hg", 0))
+			var away_goals := int(result.get("ag", 0))
+			var user_goals := home_goals if is_home else away_goals
+			var opponent_goals := away_goals if is_home else home_goals
+			var outcome := "VITTORIA" if user_goals > opponent_goals else "PAREGGIO" if user_goals == opponent_goals else "SCONFITTA"
+			var result_line := Label.new()
+			result_line.text = "G" + str(int(result.get("day", 0)) + 1) + "  •  " + opponent + "  •  " + str(home_goals) + "–" + str(away_goals) + "  •  " + outcome
+			result_line.add_theme_font_size_override("font_size", 11)
+			result_line.add_theme_color_override("font_color", Color("#83d6a5") if outcome == "VITTORIA" else Color("#e5bd69") if outcome == "PAREGGIO" else Color("#ff8a8a"))
+			results_box.add_child(result_line)
 	if not match_report.is_empty():
 		var report_button := Button.new()
 		report_button.text = "RIVEDI ULTIMA PARTITA"
@@ -1907,6 +1930,19 @@ func _renew_player_contract(player_id: int) -> void:
 			_save_game()
 			_show_squad()
 			return
+
+func _last_results_for_club(limit: int = 5) -> Array:
+	var recent: Array = []
+	for i in range(match_results.size() - 1, -1, -1):
+		var result: Dictionary = match_results[i]
+		if int(result.get("season", -1)) != season:
+			continue
+		if str(result.get("home", "")) != club_name and str(result.get("away", "")) != club_name:
+			continue
+		recent.append(result)
+		if recent.size() >= maxi(1, limit):
+			break
+	return recent
 
 func _show_calendar() -> void:
 	_clear_content()
