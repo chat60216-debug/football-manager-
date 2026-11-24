@@ -2870,7 +2870,7 @@ func _load_game() -> void:
 	var recovered_from_backup := false
 	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
 	if file != null:
-		parsed = JSON.parse_string(file.get_as_text())
+		parsed = _parse_save_text(file.get_as_text())
 		file.close()
 	if typeof(parsed) != TYPE_DICTIONARY:
 		var backup_file := FileAccess.open(SAVE_PATH + ".bak", FileAccess.READ)
