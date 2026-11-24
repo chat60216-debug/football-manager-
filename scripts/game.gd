@@ -2006,6 +2006,8 @@ func _submit_offer() -> void:
 	p.morale = 80
 	p.fitness = 100
 	p.injury = 0
+	p["previous_club"] = str(p.get("club", "Club proprietario"))
+	p["club"] = club_name
 	var signed_player: Dictionary = p.duplicate(true)
 	players.append(signed_player)
 	cash -= fee
@@ -2017,6 +2019,8 @@ func _submit_offer() -> void:
 		if int(prospect.get("id", -1)) == int(signed_player.get("id", -2)):
 			prospect["scouting_status"] = "Ingaggiato"
 			prospect["scouting_report"] = true
+			prospect["previous_club"] = str(p.get("previous_club", ""))
+			prospect["club"] = club_name
 	_save_game()
 	_show_market()
 	_label("TRASFERIMENTO COMPLETATO: "+p.name+" è un nuovo giocatore!")
@@ -2037,6 +2041,7 @@ func _submit_loan_offer() -> void:
 	loanee["id"] = _unique_player_id()
 	loanee["loan"] = true
 	loanee["parent_club"] = str(source.get("club", "Club proprietario"))
+	loanee["club"] = club_name
 	loanee["loan_fee"] = loan_fee
 	loanee["contract"] = 1
 	loanee["wage"] = loan_wage
@@ -2053,6 +2058,8 @@ func _submit_loan_offer() -> void:
 			prospect["scouting_status"] = "In prestito al tuo club"
 			prospect["scouting_report"] = true
 			prospect["id"] = int(loanee.get("id", -1))
+			prospect["parent_club"] = str(loanee.get("parent_club", ""))
+			prospect["club"] = club_name
 	_save_game()
 	_show_market()
 	_label("Prestito completato: " + str(loanee.get("name", "Giocatore")) + " arriva per una stagione.")
