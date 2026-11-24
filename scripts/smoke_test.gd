@@ -26,6 +26,12 @@ func _run_smoke_test() -> void:
 		_fail("real club selector has no imported Serie B clubs")
 		return
 	game.setup_real_club.select(1)
+	game._continue_to_career_settings()
+	if game.setup_difficulty == null or game.setup_budget == null:
+		_fail("career settings did not appear after club selection")
+		return
+	game.setup_difficulty.select(1)
+	game.setup_budget.select(1)
 	game._new_career()
 	await process_frame
 	if game.players.size() < 11:
