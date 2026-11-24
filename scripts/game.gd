@@ -30,6 +30,10 @@ var tactics := {"mentalita":"Equilibrata","pressing":"Medio","costruzione":"Mist
 var formation := "4-3-3"
 var lineup_ids: Array = []
 var captain_id := -1
+var team_talk_last_day := -1
+var team_talk_last_season := -1
+var pre_match_bonus := 0
+var team_talk_message := "Nessun discorso prepartita effettuato."
 var training_focus := "Equilibrio"
 var training_last_day := -1
 var training_last_season := -1
@@ -456,6 +460,10 @@ func _new_career() -> void:
 	formation = "4-3-3"
 	lineup_ids.clear()
 	training_focus = "Equilibrio"
+	team_talk_last_day = -1
+	team_talk_last_season = -1
+	pre_match_bonus = 0
+	team_talk_message = "Nessun discorso prepartita effettuato."
 	training_last_day = -1
 	training_last_season = -1
 	training_sessions = 0
@@ -1030,6 +1038,41 @@ func _show_matchday_presentation() -> void:
 	_label(("🔥  DERBY: LA CITTÀ SI FERMA" if _is_derby(opponent) else "90 MINUTI PER SCRIVERE LA STORIA"), 18)
 	_label("Forma squadra: " + str(_team_rating()) + " OVR  •  Modulo: " + formation)
 	_label("Mentalità: " + str(tactics.get("mentalita", "Equilibrata")) + "  •  Pressing: " + str(tactics.get("pressing", "Medio")))
+	_label("SPOGLIATOIO  /  DISCORSO PREPARTITA", 18)
+	if team_talk_last_season == season and team_talk_last_day == day:
+		_label(team_talk_message, 14)
+		_label("Il gruppo ha già ricevuto il discorso per questa giornata.")
+	else:
+		_label("Scegli come preparare mentalmente la squadra prima del calcio d'inizio.")
+		_button("CARICA LA SQUADRA  •  +2 FORZA", func(): _team_talk("Carica"))
+		_button("TOGLI LA PRESSIONE  •  +1 FORZA", func(): _team_talk("Serenità"))
+		_button("CHIEDI CONCENTRAZIONE  •  +3 FORZA", func(): _team_talk("Concentrazione"))
+func _team_talk(style: String) -> void:
+	if team_talk_last_season == season and team_talk_last_day == day:
+		_show_matchday_presentation()
+		return
+	pre_match_bonus = 0
+	var morale_gain := 0
+	match style:
+		"Carica":
+			morale_gain = 5
+			pre_match_bonus = 2
+			team_talk_message = "Hai caricato il gruppo: la squadra scende in campo con energia e fiducia."
+		"Serenità":
+			morale_gain = 4
+			pre_match_bonus = 1
+			team_talk_message = "Hai tolto pressione: il gruppo affronta la partita con maggiore tranquillità."
+		_:
+			morale_gain = 3
+			pre_match_bonus = 3
+			team_talk_message = "Hai chiesto massima concentrazione: il gruppo è pronto a seguire il piano gara."
+	for p in players:
+		p["morale"] = mini(100, int(p.get("morale", 70)) + morale_gain)
+	team_talk_last_day = day
+	team_talk_last_season = season
+	_save_game()
+	_show_matchday_presentation()
+
 	_button("CONFERMA FORMAZIONE E SCENDI IN CAMPO", _play_matchday)
 	_button("Rivedi formazione", _show_formation)
 	_button("Torna alla dashboard", _show_home)
@@ -1088,6 +1131,7 @@ func _play_matchday() -> void:
 		if int(p.get("suspension", 0)) > 0:
 			p["suspension"] = maxi(0, int(p.get("suspension", 0)) - 1)
 	day += 1
+	pre_match_bonus = 0
 	_advance_scouting_reports()
 	_save_game()
 	if club_played and not match_report.is_empty():
@@ -1154,6 +1198,7 @@ func _club_power(team: String) -> int:
 		match str(tactics.get("linea", "Media")):
 			"Alta": power += 1
 			"Bassa": power -= 1
+		power += pre_match_bonus
 		return clampi(power, 35, 99)
 	# Keep AI strength stable for the whole fixture: the same club must not
 	# receive a different random rating every time the simulator asks for it.
@@ -2542,6 +2587,10 @@ func _new_season() -> void:
 	last_season_message += "\\n" + awards_text
 	season += 1
 	day = 0
+	team_talk_last_day = -1
+	team_talk_last_season = -1
+	pre_match_bonus = 0
+	team_talk_message = "Nessun discorso prepartita effettuato."
 	training_last_day = -1
 	training_last_season = -1
 	var expired_contracts: Array = []
@@ -2736,7 +2785,7 @@ func _parse_save_text(raw_text: String) -> Variant:
 	return parser.data
 
 func _save_game() -> void:
-	var data := {"save_version":2,"saved_at":Time.get_datetime_string_from_system(),"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"manager_name":manager_name,"career_difficulty":career_difficulty,"starting_budget_mode":starting_budget_mode,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"match_results":match_results,"market":market,"market_sort":market_sort,"observed_players":observed_players,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"captain_id":captain_id,"training_focus":training_focus,"training_last_day":training_last_day,"training_last_season":training_last_season,"training_sessions":training_sessions,"training_last_message":training_last_message,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
+	var data := {"save_version":2,"saved_at":Time.get_datetime_string_from_system(),"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"manager_name":manager_name,"career_difficulty":career_difficulty,"starting_budget_mode":starting_budget_mode,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"match_results":match_results,"market":market,"market_sort":market_sort,"observed_players":observed_players,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"captain_id":captain_id,"team_talk_last_day":team_talk_last_day,"team_talk_last_season":team_talk_last_season,"pre_match_bonus":pre_match_bonus,"team_talk_message":team_talk_message,"training_focus":training_focus,"training_last_day":training_last_day,"training_last_season":training_last_season,"training_sessions":training_sessions,"training_last_message":training_last_message,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
 	# Preserve the last valid save before replacing it, so an interrupted write
 	# or damaged JSON can be recovered on the next launch.
 	var previous_file := FileAccess.open(SAVE_PATH, FileAccess.READ)
@@ -2854,6 +2903,10 @@ func _load_game() -> void:
 	formation = str(d.get("formation", "4-3-3"))
 	lineup_ids = d.get("lineup_ids", [])
 	captain_id = int(d.get("captain_id", -1))
+	team_talk_last_day = int(d.get("team_talk_last_day", -1))
+	team_talk_last_season = int(d.get("team_talk_last_season", -1))
+	pre_match_bonus = int(d.get("pre_match_bonus", 0))
+	team_talk_message = str(d.get("team_talk_message", "Nessun discorso prepartita effettuato."))
 	_repair_saved_player_ids()
 	training_focus = str(d.get("training_focus", "Equilibrio"))
 	training_last_day = int(d.get("training_last_day", -1))
