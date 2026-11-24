@@ -178,6 +178,15 @@ func _run_smoke_test() -> void:
 				unique_names.append(club)
 	game.country = original_country
 	game.division = original_division
+	if game.cup_teams.size() != 8 or not game.cup_teams.has(game.club_name):
+		_fail("national cup did not initialize with eight entrants including the selected club")
+		return
+	var unique_cup_teams: Array = []
+	for cup_team in game.cup_teams:
+		if unique_cup_teams.has(cup_team):
+			_fail("national cup contains a duplicate team")
+			return
+		unique_cup_teams.append(cup_team)
 	if game.european_competitions.size() != 3:
 		_fail("UEFA competitions did not initialize")
 		return
