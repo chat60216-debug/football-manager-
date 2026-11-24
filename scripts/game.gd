@@ -503,6 +503,7 @@ func _update_setup_real_clubs() -> void:
 		return
 	setup_real_club.clear()
 	setup_real_club.add_item("Club personalizzato")
+	setup_real_club.select(0)
 	var code := _competition_code(country, setup_division.get_item_text(setup_division.selected))
 	var names: Array = []
 	if country == "Italia" and setup_division.get_item_text(setup_division.selected) == "Serie C":
