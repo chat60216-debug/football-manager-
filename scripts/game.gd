@@ -580,37 +580,117 @@ func _show_tab(tab: String) -> void:
 
 func _show_home() -> void:
 	_clear_content()
-	_label(club_name+" • "+division+" "+str(season),22)
+	var hero := PanelContainer.new()
+	hero.custom_minimum_size = Vector2(0, 132)
+	content.add_child(hero)
+	var hero_box := VBoxContainer.new()
+	hero.add_child(hero_box)
+	var brand := Label.new()
+	brand.text = "DYNASTY  /  MATCHDAY"
+	brand.add_theme_font_size_override("font_size", 13)
+	brand.add_theme_color_override("font_color", Color("#67dce9"))
+	hero_box.add_child(brand)
+	var club_title := Label.new()
+	club_title.text = club_name.to_upper()
+	club_title.add_theme_font_size_override("font_size", 27)
+	club_title.add_theme_color_override("font_color", Color("#f4f8ff"))
+	club_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hero_box.add_child(club_title)
+	var subtitle := Label.new()
+	subtitle.text = division + "  •  STAGIONE " + str(season) + "/" + str(season + 1) + "  •  GIORNATA " + str(mini(day + 1, fixtures.size()))
+	subtitle.add_theme_color_override("font_color", Color("#9db5ce"))
+	hero_box.add_child(subtitle)
 	if last_season_message != "":
 		_label(last_season_message, 17)
-	_label("Turno "+str(day+1)+" / "+str(fixtures.size())+" • "+str(league.size())+" squadre")
-	_label("Cassa: €"+_money(cash)+" • Budget ingaggi settimanale: €"+_money(wage_budget))
-	if not real_roster_db.is_empty():
-		var imported_players := 0
-		var imported_clubs := 0
-		for comp_data in real_roster_db.values():
-			imported_players += int(comp_data.get("player_count", 0))
-			imported_clubs += int(comp_data.get("club_count", 0))
-		_label("Database rose reali: " + str(imported_players) + " giocatori in " + str(imported_clubs) + " club")
-	else:
-		_label("Database rose reali non trovato: questa installazione userà le rose generate.")
-	_label("Rosa: "+str(players.size())+" calciatori • Media: "+str(_team_rating()))
-	_label("Mentalità: "+tactics.mentalita+" | Pressing: "+tactics.pressing+" | Costruzione: "+tactics.costruzione)
+	_label("IL TUO CLUB", 18)
+	var stats := HBoxContainer.new()
+	content.add_child(stats)
+	for stat in ["€" + _money(cash) + "\nBILANCIO", str(players.size()) + "\nCALCIATORI", str(_team_rating()) + "\nOVR SQUADRA"]:
+		var tile := PanelContainer.new()
+		tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		stats.add_child(tile)
+		var stat_label := Label.new()
+		stat_label.text = stat
+		stat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		stat_label.add_theme_font_size_override("font_size", 15)
+		tile.add_child(stat_label)
+	_label("PROSSIMO APPUNTAMENTO", 18)
 	if day < fixtures.size():
 		var fixture := _find_fixture(club_name)
 		if not fixture.is_empty():
-			_label("PROSSIMA PARTITA",20)
-			_label(fixture.home+" vs "+fixture.away,24)
+			var opponent := str(fixture.away if fixture.home == club_name else fixture.home)
+			var home_side := fixture.home == club_name
+			var fixture_panel := PanelContainer.new()
+			content.add_child(fixture_panel)
+			var fixture_box := VBoxContainer.new()
+			fixture_panel.add_child(fixture_box)
+			var versus := Label.new()
+			versus.text = ("CASA" if home_side else "TRASFERTA") + "   •   " + ("DERBY" if _is_derby(opponent) else "CAMPIONATO")
+			versus.add_theme_color_override("font_color", Color("#ffd36a") if _is_derby(opponent) else Color("#67dce9"))
+			fixture_box.add_child(versus)
+			var match_title := Label.new()
+			match_title.text = fixture.home + "\nVS\n" + fixture.away
+			match_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			match_title.add_theme_font_size_override("font_size", 22)
+			fixture_box.add_child(match_title)
+			_button("ENTRA NEL GIORNO PARTITA  →", _show_matchday_presentation)
 		else:
-			_label("TURNO DI RIPOSO: la tua squadra non ha una partita in questo turno.",20)
-		_button("GIOCA PROSSIMO TURNO",_play_matchday)
+			_label("Turno di riposo: prepara la squadra e recupera energie.")
+			_button("AVANZA AL PROSSIMO TURNO", _play_matchday)
 	else:
 		_label("Campionato terminato.")
 		_button("AVANZA ALLA NUOVA STAGIONE",_new_season)
-	_button("Salva carriera",_save_game)
+	_label("CLASSIFICA IN PRIMO PIANO", 18)
+	var standings: Array = league.duplicate(true)
+	standings.sort_custom(func(a, b): return int(a.get("pts", 0)) > int(b.get("pts", 0)) or (int(a.get("pts", 0)) == int(b.get("pts", 0)) and int(a.get("gf", 0)) - int(a.get("ga", 0)) > int(b.get("gf", 0)) - int(b.get("ga", 0))))
+	for i in range(mini(5, standings.size())):
+		var row: Dictionary = standings[i]
+		_label(str(i + 1) + "   " + str(row.get("name", "")) + "     " + str(row.get("pts", 0)) + " pt")
+	_label("NOTIZIE DAL CLUB", 18)
+	for news in _club_news():
+		_label("•  " + news)
 	if not match_report.is_empty():
-		_button("Rivedi ultima partita", _show_match_report)
+		_button("RIVEDI ULTIMA PARTITA", _show_match_report)
+	_button("Salva carriera",_save_game)
 	_button("Impostazioni tattiche",_show_tactics)
+
+func _is_derby(opponent: String) -> bool:
+	var pair := [club_name.to_lower(), opponent.to_lower()]
+	var rivalries := [["milan","inter"],["torino","juventus"],["roma","lazio"],["real madrid","atletico"],["barcelona","espanyol"],["arsenal","tottenham"],["liverpool","everton"],["manchester city","manchester united"],["bayern","1860 münchen"],["hamburg","st. pauli"],["ac nova milano","torino athletic"]]
+	for rivalry in rivalries:
+		if pair.has(rivalry[0]) and pair.has(rivalry[1]):
+			return true
+	return false
+
+func _club_news() -> Array:
+	var news: Array = []
+	news.append("La dirigenza conferma la fiducia: " + str(board_confidence) + "/100.")
+	news.append("Il gruppo si allena con focus " + training_focus.to_lower() + ".")
+	var top_scorer: Dictionary = {}
+	for p in players:
+		if top_scorer.is_empty() or int(p.get("goals", 0)) > int(top_scorer.get("goals", 0)):
+			top_scorer = p
+	if not top_scorer.is_empty() and int(top_scorer.get("goals", 0)) > 0:
+		news.append(str(top_scorer.get("name", "")) + " guida i marcatori con " + str(top_scorer.get("goals", 0)) + " gol.")
+	news.append("Sponsor attivo: " + str(sponsor_contract.get("name", "Nessuno")) + ".")
+	return news
+
+func _show_matchday_presentation() -> void:
+	_clear_content()
+	var fixture := _find_fixture(club_name)
+	if fixture.is_empty():
+		_play_matchday()
+		return
+	var opponent := str(fixture.away if fixture.home == club_name else fixture.home)
+	_label("MATCHDAY  •  GIORNATA " + str(day + 1), 16)
+	_label("IL GRANDE APPUNTAMENTO", 25)
+	_label(fixture.home.to_upper() + "\nVS\n" + fixture.away.to_upper(), 27)
+	_label(("🔥  DERBY: LA CITTÀ SI FERMA" if _is_derby(opponent) else "90 MINUTI PER SCRIVERE LA STORIA"), 18)
+	_label("Forma squadra: " + str(_team_rating()) + " OVR  •  Modulo: " + formation)
+	_label("Mentalità: " + str(tactics.get("mentalita", "Equilibrata")) + "  •  Pressing: " + str(tactics.get("pressing", "Medio")))
+	_button("CONFERMA FORMAZIONE E SCENDI IN CAMPO", _play_matchday)
+	_button("Rivedi formazione", _show_formation)
+	_button("Torna alla dashboard", _show_home)
 
 func _find_fixture(team: String) -> Dictionary:
 	if day >= fixtures.size():
@@ -1693,19 +1773,46 @@ func _show_match_report() -> void:
 		_show_home()
 		return
 	_clear_content()
-	_label("CRONACA DELLA PARTITA", 23)
-	_label(str(match_report.get("home", "")) + "  " + str(match_report.get("home_goals", 0)) + " - " + str(match_report.get("away_goals", 0)) + "  " + str(match_report.get("away", "")), 25)
-	_label("Cronaca minuto per minuto", 18)
-	for event in match_report.get("events", []):
-		_label(str(event.get("minute", 0)) + "′  " + str(event.get("text", "")))
-	_label("VALUTAZIONI GIOCATORI", 18)
+	var home_goals := int(match_report.get("home_goals", 0))
+	var away_goals := int(match_report.get("away_goals", 0))
+	var opponent := str(match_report.get("away", "") if str(match_report.get("home", "")) == club_name else match_report.get("home", ""))
+	var score_panel := PanelContainer.new()
+	content.add_child(score_panel)
+	var score_box := VBoxContainer.new()
+	score_panel.add_child(score_box)
+	var match_tag := Label.new()
+	match_tag.text = "FULL TIME  •  " + ("DERBY" if _is_derby(opponent) else str(match_report.get("date_label", "MATCHDAY")))
+	match_tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	match_tag.add_theme_color_override("font_color", Color("#ffd36a") if _is_derby(opponent) else Color("#67dce9"))
+	score_box.add_child(match_tag)
+	var score := Label.new()
+	score.text = str(match_report.get("home", "")) + "\n" + str(home_goals) + "   —   " + str(away_goals) + "\n" + str(match_report.get("away", ""))
+	score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	score.add_theme_font_size_override("font_size", 25)
+	score_box.add_child(score)
+	var visual = preload("res://scripts/match_visualizer.gd").new()
+	visual.setup(match_report)
+	content.add_child(visual)
+	_label("AZIONI E CRONACA", 19)
+	var events: Array = match_report.get("events", [])
+	var important := 0
+	for event in events:
+		if str(event.get("type", "")) in ["goal", "sub", "card", "break", "end", "start"]:
+			var event_type := str(event.get("type", ""))
+			var prefix := "⚽" if event_type == "goal" else "🔁" if event_type == "sub" else "🟨" if event_type == "card" else "⏱"
+			_label(prefix + "  " + str(event.get("minute", 0)) + "′  " + str(event.get("text", "")))
+			important += 1
+	if important == 0:
+		_label("Partita equilibrata, poche occasioni decisive.")
+	_label("VALUTAZIONI GIOCATORI", 19)
 	var rated: Array = []
 	for p in players:
 		if match_report.get("played_ids", []).has(int(p.get("id", -1))):
 			rated.append(p)
 	rated.sort_custom(func(a, b): return float(a.get("last_rating", 6.0)) > float(b.get("last_rating", 6.0)))
 	for p in rated:
-		_label(str(p.get("name", "")) + " • " + str(p.get("last_rating", 6.0)) + "/10 • " + str(p.get("position", "")))
+		var rating := float(p.get("last_rating", 6.0))
+		_label(str(p.get("name", "")) + "   " + str(p.get("position", "")) + "   " + str(rating) + "/10")
 	_button("Torna alla carriera", _show_home)
 	_button("Rivedi formazione", _show_formation)
 
