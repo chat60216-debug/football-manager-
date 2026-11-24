@@ -232,7 +232,10 @@ func _run_smoke_test() -> void:
 		if str(event.get("type", "")) == "goal" and str(event.get("team", "")) == game.club_name:
 			user_goal_events += 1
 			var scorer_id := int(event.get("scorer_id", -1))
-			if scorer_id != -1 and game.players.filter(func(p): return int(p.get("id", -2)) == scorer_id).is_empty():
+			if scorer_id < 0:
+				_fail("match commentary did not assign a player identity to a user-team goal")
+				return
+			if game.players.filter(func(p): return int(p.get("id", -2)) == scorer_id).is_empty():
 				_fail("match commentary referenced a scorer outside the active squad")
 				return
 	var squad_goal_total := 0
