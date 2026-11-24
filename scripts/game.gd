@@ -230,6 +230,8 @@ func _generate_league() -> void:
 	league.clear()
 	var names: Array = _league_team_names()
 	if not names.has(club_name):
+		if names.size() >= 18:
+			names.pop_back()
 		names.append(club_name)
 	for team in names:
 		league.append({"name":team,"pts":0,"p":0,"w":0,"d":0,"l":0,"gf":0,"ga":0})
@@ -334,11 +336,11 @@ func _play_matchday() -> void:
 			club_played = true
 			_apply_player_match(hg,ag)
 			cash += 80000+hg*7000
-			wage_budget -= _weekly_wages()
+			cash -= _weekly_wages()
 			if hg > ag:
 				cash += 45000
 	if not club_played:
-		wage_budget -= _weekly_wages()
+		cash -= _weekly_wages()
 		for p in players:
 			p.fitness = mini(100,int(p.fitness)+5)
 	for p in players:
@@ -826,7 +828,46 @@ func _train_squad() -> void:
 	_save_game()
 	_show_club()
 
+
+func _finish_season_and_move_club() -> void:
+	if league.is_empty():
+		return
+	var sorted: Array = league.duplicate()
+	sorted.sort_custom(func(a, b):
+		if int(a.get("pts", 0)) == int(b.get("pts", 0)):
+			var gd_a := int(a.get("gf", 0)) - int(a.get("ga", 0))
+			var gd_b := int(b.get("gf", 0)) - int(b.get("ga", 0))
+			if gd_a == gd_b:
+				return int(a.get("gf", 0)) > int(b.get("gf", 0))
+			return gd_a > gd_b
+		return int(a.get("pts", 0)) > int(b.get("pts", 0))
+	)
+	var position := -1
+	for i in range(sorted.size()):
+		if str(sorted[i].get("name", "")) == club_name:
+			position = i
+			break
+	if position >= 0:
+		season_history.append({"season":season,"division":division,"position":position + 1,"teams":sorted.size(),"points":int(sorted[position].get("pts", 0))})
+		if season_history.size() > 12:
+			season_history.pop_front()
+	var divisions: Array = DIVISIONS.get(country, [])
+	var current_index := divisions.find(division)
+	if current_index < 0 or position < 0:
+		return
+	if position == 0 and current_index < divisions.size() - 1:
+		division = str(divisions[current_index + 1])
+		cash += 1500000
+		european_status = "Promosso in " + division
+	elif position >= sorted.size() - 3 and current_index > 0:
+		division = str(divisions[current_index - 1])
+		cash = maxi(0, cash - 300000)
+		european_status = "Retrocesso in " + division
+	else:
+		european_status = "Confermato in " + division
+
 func _new_season() -> void:
+	_finish_season_and_move_club()
 	season += 1
 	day = 0
 	for i in range(players.size() - 1, -1, -1):
@@ -979,6 +1020,9 @@ func _show_stats() -> void:
 	for i in range(mini(10, sorted_players.size())):
 		var p: Dictionary = sorted_players[i]
 		_label(str(i + 1) + ". " + str(p.get("name", "Giocatore")) + " — " + str(p.get("goals", 0)) + " gol • " + str(p.get("apps", 0)) + " pres. • " + str(p.get("assists", 0)) + " assist")
+	_label("STORICO CAMPIONATI", 18)
+	for record in season_history:
+		_label(str(record.get("season", "")) + " • " + str(record.get("division", "")) + " • Posizione " + str(record.get("position", "-")) + "/" + str(record.get("teams", "")) + " • " + str(record.get("points", 0)) + " pt")
 	_label("DISCIPLINA E DISPONIBILITÀ", 18)
 	for p in players:
 		if int(p.get("yellow", 0)) > 0 or int(p.get("red", 0)) > 0 or int(p.get("injury", 0)) > 0 or int(p.get("suspension", 0)) > 0:
