@@ -91,8 +91,8 @@ func _make_dynasty_theme() -> Theme:
 	game_theme.set_font_size("font_size", "Button", 15)
 	game_theme.set_font_size("font_size", "Label", 16)
 	var normal := StyleBoxFlat.new()
-	normal.bg_color = Color("#14243a")
-	normal.border_color = Color("#294563")
+	normal.bg_color = Color("#172536")
+	normal.border_color = Color("#39495b")
 	normal.set_border_width_all(1)
 	normal.set_corner_radius_all(12)
 	normal.content_margin_left = 12
@@ -100,8 +100,8 @@ func _make_dynasty_theme() -> Theme:
 	normal.content_margin_top = 9
 	normal.content_margin_bottom = 9
 	var hover := StyleBoxFlat.new()
-	hover.bg_color = Color("#203b59")
-	hover.border_color = Color("#54c7e8")
+	hover.bg_color = Color("#2a3544")
+	hover.border_color = Color("#d6b66f")
 	hover.set_border_width_all(2)
 	hover.set_corner_radius_all(12)
 	hover.content_margin_left = 12
@@ -109,8 +109,8 @@ func _make_dynasty_theme() -> Theme:
 	hover.content_margin_top = 9
 	hover.content_margin_bottom = 9
 	var pressed := StyleBoxFlat.new()
-	pressed.bg_color = Color("#087f8c")
-	pressed.border_color = Color("#70e1ed")
+	pressed.bg_color = Color("#8a682d")
+	pressed.border_color = Color("#f0d28a")
 	pressed.set_border_width_all(1)
 	pressed.set_corner_radius_all(12)
 	pressed.content_margin_left = 12
@@ -260,7 +260,7 @@ func _label(text_value: String, size := 16) -> Label:
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.add_theme_font_size_override("font_size", size)
 	if size >= 22:
-		l.add_theme_color_override("font_color", Color("#79e1ed"))
+		l.add_theme_color_override("font_color", Color("#e5bd69"))
 	elif size >= 18:
 		l.add_theme_color_override("font_color", Color("#f4f8ff"))
 	else:
@@ -331,6 +331,7 @@ func _show_team_selection() -> void:
 	setup_real_club.custom_minimum_size = Vector2(0, 48)
 	setup_real_club.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	club_box.add_child(setup_real_club)
+	_update_setup_real_clubs()
 	_label("Oppure personalizza il nome del club selezionando “Club personalizzato”.", 13)
 	setup_name = LineEdit.new()
 	setup_name.placeholder_text = "Nome del tuo club"
@@ -720,7 +721,7 @@ func _show_tab(tab: String) -> void:
 		"Formazione": _show_formation()
 		"Mercato": _show_market()
 		"Classifica": _show_table()
-		"Calendario": _show_table()
+		"Calendario": _show_calendar()
 		"Coppe": _show_cups()
 		"Club": _show_club()
 		"Giovanili": _show_youth()
@@ -1448,6 +1449,49 @@ func _renew_player_contract(player_id: int) -> void:
 			_save_game()
 			_show_squad()
 			return
+
+func _show_calendar() -> void:
+	_clear_content()
+	_label("CALENDARIO  /  " + str(season) + "–" + str(season + 1), 25)
+	_label("Il percorso completo della stagione, con il prossimo impegno evidenziato.", 14)
+	for matchday in range(fixtures.size()):
+		var games: Array = fixtures[matchday]
+		var user_fixture: Dictionary = {}
+		for fixture in games:
+			if str(fixture.get("home", "")) == club_name or str(fixture.get("away", "")) == club_name:
+				user_fixture = fixture
+				break
+		if user_fixture.is_empty():
+			continue
+		var row := PanelContainer.new()
+		content.add_child(row)
+		var row_box := HBoxContainer.new()
+		row_box.add_theme_constant_override("separation", 16)
+		row.add_child(row_box)
+		var number := Label.new()
+		number.text = "%02d" % (matchday + 1)
+		number.custom_minimum_size = Vector2(54, 0)
+		number.add_theme_font_size_override("font_size", 20)
+		number.add_theme_color_override("font_color", Color("#d6b66f"))
+		number.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row_box.add_child(number)
+		var fixture_label := Label.new()
+		fixture_label.text = str(user_fixture.get("home", "")) + "   —   " + str(user_fixture.get("away", ""))
+		fixture_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		fixture_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row_box.add_child(fixture_label)
+		var status := Label.new()
+		if matchday < day:
+			status.text = "GIOCATA"
+		elif matchday == day:
+			status.text = "PROSSIMA"
+			status.add_theme_color_override("font_color", Color("#e5bd69"))
+		else:
+			status.text = "IN PROGRAMMA"
+			status.add_theme_color_override("font_color", Color("#8295aa"))
+		status.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row_box.add_child(status)
+	_button("TORNA ALLA HOME", func(): _show_tab("Home"))
 
 func _show_table() -> void:
 	_clear_content()
