@@ -29,6 +29,7 @@ var european_status := "Non qualificato"
 var tactics := {"mentalita":"Equilibrata","pressing":"Medio","costruzione":"Mista","linea":"Media","sostituzioni":"Equilibrate"}
 var formation := "4-3-3"
 var lineup_ids: Array = []
+var captain_id := -1
 var training_focus := "Equilibrio"
 var training_last_day := -1
 var training_last_season := -1
@@ -484,6 +485,7 @@ func _new_career() -> void:
 			generated_player["rating"] = maxi(42, int(generated_player.get("rating", 60)) - 6)
 		players.append(generated_player)
 	_ensure_lineup()
+	captain_id = int(lineup_ids[0]) if not lineup_ids.is_empty() else -1
 	_generate_league()
 	_initialise_pyramid()
 	_initialise_club_business()
@@ -1179,6 +1181,7 @@ func _team_rating() -> int:
 	if players.is_empty():
 		return 0
 	_ensure_lineup()
+	_ensure_captain()
 	var total := 0.0
 	var count := 0
 	var slots := _formation_positions()
@@ -1188,6 +1191,8 @@ func _team_rating() -> int:
 			if int(p.get("id", -1)) != player_id:
 				continue
 			var effective_rating := float(p.get("rating", 50))
+			if player_id == captain_id:
+				effective_rating += 1.0
 			effective_rating -= float(_position_fit_penalty(str(p.get("position", "")), str(slots[slot_index]))) if slot_index < slots.size() else 0.0
 			effective_rating -= maxf(0.0, 75.0 - float(p.get("fitness", 100))) * 0.07
 			effective_rating -= maxf(0.0, 50.0 - float(p.get("morale", 70))) * 0.05
@@ -1262,6 +1267,18 @@ func _ensure_lineup() -> void:
 		if not lineup_ids.has(candidate_id):
 			lineup_ids.append(candidate_id)
 
+func _ensure_captain() -> void:
+	if players.is_empty():
+		captain_id = -1
+		return
+	var captain_available := false
+	for p in players:
+		if int(p.get("id", -1)) == captain_id and lineup_ids.has(captain_id) and int(p.get("injury", 0)) == 0 and int(p.get("suspension", 0)) == 0:
+			captain_available = true
+			break
+	if not captain_available:
+		captain_id = int(lineup_ids[0]) if not lineup_ids.is_empty() else int(players[0].get("id", -1))
+
 func _show_formation() -> void:
 	_clear_content()
 	_ensure_lineup()
@@ -1278,6 +1295,31 @@ func _show_formation() -> void:
 		_show_formation()
 	)
 	content.add_child(modules)
+	_ensure_captain()
+	var captain_row := HBoxContainer.new()
+	captain_row.add_theme_constant_override("separation", 10)
+	content.add_child(captain_row)
+	var captain_label := Label.new()
+	captain_label.text = "CAPITANO"
+	captain_label.custom_minimum_size = Vector2(100, 42)
+	captain_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	captain_row.add_child(captain_label)
+	var captain_choice := OptionButton.new()
+	captain_choice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for player_id in lineup_ids:
+		for squad_player in players:
+			if int(squad_player.get("id", -1)) == int(player_id):
+				captain_choice.add_item(str(squad_player.get("name", "Giocatore")) + " • " + str(squad_player.get("rating", 0)) + " OVR")
+				if int(player_id) == captain_id:
+					captain_choice.select(captain_choice.item_count - 1)
+				break
+	captain_choice.item_selected.connect(func(option_index):
+		if option_index >= 0 and option_index < lineup_ids.size():
+			captain_id = int(lineup_ids[option_index])
+			_save_game()
+			_show_formation()
+	)
+	captain_row.add_child(captain_choice)
 	var positions := _formation_positions()
 	var pitch = preload("res://scripts/tactical_pitch.gd").new()
 	pitch.set_lineup(players, lineup_ids, formation)
@@ -1532,6 +1574,7 @@ func _sell_player(player_id: int) -> void:
 			players.remove_at(i)
 			lineup_ids.erase(player_id)
 			_ensure_lineup()
+			_ensure_captain()
 			_save_game()
 			_show_squad()
 			return
@@ -2693,7 +2736,7 @@ func _parse_save_text(raw_text: String) -> Variant:
 	return parser.data
 
 func _save_game() -> void:
-	var data := {"save_version":2,"saved_at":Time.get_datetime_string_from_system(),"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"manager_name":manager_name,"career_difficulty":career_difficulty,"starting_budget_mode":starting_budget_mode,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"match_results":match_results,"market":market,"market_sort":market_sort,"observed_players":observed_players,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"training_last_day":training_last_day,"training_last_season":training_last_season,"training_sessions":training_sessions,"training_last_message":training_last_message,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
+	var data := {"save_version":2,"saved_at":Time.get_datetime_string_from_system(),"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"manager_name":manager_name,"career_difficulty":career_difficulty,"starting_budget_mode":starting_budget_mode,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"match_results":match_results,"market":market,"market_sort":market_sort,"observed_players":observed_players,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"captain_id":captain_id,"training_focus":training_focus,"training_last_day":training_last_day,"training_last_season":training_last_season,"training_sessions":training_sessions,"training_last_message":training_last_message,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
 	# Preserve the last valid save before replacing it, so an interrupted write
 	# or damaged JSON can be recovered on the next launch.
 	var previous_file := FileAccess.open(SAVE_PATH, FileAccess.READ)
@@ -2810,6 +2853,7 @@ func _load_game() -> void:
 	tactics = loaded_tactics
 	formation = str(d.get("formation", "4-3-3"))
 	lineup_ids = d.get("lineup_ids", [])
+	captain_id = int(d.get("captain_id", -1))
 	_repair_saved_player_ids()
 	training_focus = str(d.get("training_focus", "Equilibrio"))
 	training_last_day = int(d.get("training_last_day", -1))
@@ -2826,6 +2870,7 @@ func _load_game() -> void:
 	european_competitions = d.get("european_competitions", {})
 	qualified_european_comp = str(d.get("qualified_european_comp", ""))
 	_ensure_lineup()
+	_ensure_captain()
 	_repair_observed_player_links()
 	# Migrazione automatica delle vecchie carriere con calendario fisso da 16 club.
 	if league.size() == 16 or fixtures.size() == 30:
