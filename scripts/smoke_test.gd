@@ -129,6 +129,14 @@ func _run_smoke_test() -> void:
 	if real_market_count == 0:
 		_fail("transfer market did not include real imported players")
 		return
+	var market_sample: Dictionary = game.market[0]
+	var market_name_query := str(market_sample.get("name", "")).substr(0, 3).to_lower()
+	if not game._market_search_matches(market_sample, market_name_query):
+		_fail("transfer market search did not match a player's name")
+		return
+	if game._market_search_matches(market_sample, "__no_such_dynasty_player__"):
+		_fail("transfer market search returned a false positive")
+		return
 	# Scouting regression: assignment, duplicate protection, report countdown and persistence.
 	if game.market.is_empty():
 		_fail("transfer market is empty; scouting cannot be tested")
