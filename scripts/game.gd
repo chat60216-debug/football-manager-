@@ -465,8 +465,10 @@ func _play_matchday() -> void:
 			club_played = true
 			var substitutions := _simulate_substitutions()
 			match_report = _create_match_report(home, away, hg, ag, substitutions)
-			_apply_player_match(hg,ag, substitutions)
-			_update_board_after_match(hg, ag)
+			var user_goals := hg if home == club_name else ag
+			var user_conceded := ag if home == club_name else hg
+			_apply_player_match(user_goals, user_conceded, substitutions)
+			_update_board_after_match(user_goals, user_conceded)
 			cash += 80000 + hg * 7000 + int(facilities.get("stadium", 1)) * 6000
 			cash += int(sponsor_contract.get("weekly", 0))
 			cash -= _weekly_wages()
@@ -836,6 +838,7 @@ func _negotiate(index: int) -> void:
 	market_role = OptionButton.new()
 	for role in ROLES:
 		market_role.add_item(role)
+	market_role.select(1)
 	content.add_child(market_role)
 	_button("INVIA OFFERTA",_submit_offer)
 	_button("CHIEDI PRESTITO (1 STAGIONE)",_submit_loan_offer)
@@ -1141,6 +1144,10 @@ func _finish_season_and_move_club() -> void:
 		if i > 0:
 			var lower_key := country + "|" + str(divisions[i - 1])
 			for team in promoted.get(lower_key, []):
+				if not clubs.has(team): clubs.append(team)
+		if i < divisions.size() - 1:
+			var upper_key := country + "|" + str(divisions[i + 1])
+			for team in relegated.get(upper_key, []):
 				if not clubs.has(team): clubs.append(team)
 		new_state[key] = clubs
 	pyramid_state = new_state
@@ -1451,17 +1458,20 @@ func _create_match_report(home: String, away: String, home_goals: int, away_goal
 		var minute := randi_range(2, 90)
 		var is_home := i < home_goals
 		var scorer_name := "Attaccante"
-		var candidates := home_attackers
-		if not is_home: candidates = away_attackers
+		var candidates: Array = []
+		var user_scores_at_home := home == club_name
+		if is_home == user_scores_at_home: candidates = home_attackers
 		if candidates.size() > 0:
 			scorer_name = str(candidates.pick_random().get("name", "Attaccante"))
+		else:
+			scorer_name = FIRST.pick_random() + " " + LAST.pick_random()
 		var team_name := home if is_home else away
 		events.append({"minute":minute,"text":"GOL! " + team_name + " — " + scorer_name + " (" + str(minute) + "′)","type":"goal"})
 	for minute in range(1, 91):
 		var commentary := ["Azione manovrata a centrocampo","La squadra prova ad allargare il gioco","Pressione sul portatore di palla","Possesso palla e ricerca degli spazi","Lancio in profondità, difesa attenta","Duello aereo nella zona centrale","La squadra guadagna metri","Cross dalla fascia, respinta della difesa"].pick_random()
 		events.append({"minute":minute,"text":str(minute) + "′ — " + commentary,"type":"commentary"})
 	for sub in substitutions:
-		events.append({"minute":int(sub.get("minute", 60)),"text":"Sostituzione " + home + ": " + str(sub.get("in_name", "")) + " per " + str(sub.get("out_name", "")),"type":"sub"})
+		events.append({"minute":int(sub.get("minute", 60)),"text":"Sostituzione " + club_name + ": " + str(sub.get("in_name", "")) + " per " + str(sub.get("out_name", "")),"type":"sub"})
 	for i in range(randi_range(1, 3)):
 		var minute := randi_range(8, 88)
 		events.append({"minute":minute,"text":"Cartellino giallo — " + (home if i % 2 == 0 else away) + " (" + str(minute) + "′)","type":"card"})
@@ -1623,7 +1633,7 @@ func _european_match(a: String, b: String, comp: Dictionary) -> Dictionary:
 	var tables: Dictionary = comp.get("tables", {})
 	var home: Dictionary = tables.get(a, {})
 	var away: Dictionary = tables.get(b, {})
-	if not home.is_empty() and not away.is_empty():
+	if str(comp.get("phase", "groups")) == "groups" and not home.is_empty() and not away.is_empty():
 		home["p"] = int(home.get("p", 0)) + 1
 		away["p"] = int(away.get("p", 0)) + 1
 		home["gf"] = int(home.get("gf", 0)) + hg
@@ -1646,7 +1656,9 @@ func _european_match(a: String, b: String, comp: Dictionary) -> Dictionary:
 	if a == club_name or b == club_name:
 		var subs := _simulate_substitutions()
 		match_report = _create_match_report(a, b, hg, ag, subs)
-		_apply_player_match(hg, ag, subs)
+		var user_goals := hg if a == club_name else ag
+		var user_conceded := ag if a == club_name else hg
+		_apply_player_match(user_goals, user_conceded, subs)
 	return {"home":a,"away":b,"hg":hg,"ag":ag}
 
 func _group_standings(group: Array, comp: Dictionary) -> Array:
