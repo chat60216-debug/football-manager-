@@ -178,9 +178,12 @@ func _league_team_names() -> Array:
 		"Italia|Serie A":["Atalanta","Bologna","Cagliari","Como","Fiorentina","Frosinone","Genoa","Inter","Juventus","Lazio","Lecce","Milan","Monza","Napoli","Parma","Roma","Sassuolo","Torino","Udinese","Venezia"],
 		"Italia|Serie B":["Arezzo","Ascoli","Avellino","Benevento","Carrarese","Catanzaro","Cesena","Cremonese","Empoli","Hellas Verona","Juve Stabia","Mantova","Modena","Padova","Palermo","Pisa","Sampdoria","Südtirol","Vicenza","Virtus Entella"],
 		"Inghilterra|Premier League":["AFC Bournemouth","Arsenal","Aston Villa","Brentford","Brighton & Hove Albion","Chelsea","Coventry City","Crystal Palace","Everton","Fulham","Hull City","Ipswich Town","Leeds United","Liverpool","Manchester City","Manchester United","Newcastle United","Nottingham Forest","Sunderland","Tottenham Hotspur"],
+		"Inghilterra|Championship":["Birmingham City","Blackburn Rovers","Bristol City","Bolton Wanderers","Burnley","Cardiff City","Charlton Athletic","Derby County","Lincoln City","Middlesbrough","Millwall","Norwich City","Portsmouth","Preston North End","Queens Park Rangers","Sheffield United","Southampton","Stoke City","Swansea City","Watford","West Bromwich Albion","West Ham United","Wrexham","Wolverhampton Wanderers"],
+		"Inghilterra|League One":["AFC Wimbledon","Barnsley","Blackpool","Bradford City","Bromley","Burton Albion","Cambridge United","Doncaster Rovers","Huddersfield Town","Leicester City","Leyton Orient","Luton Town","Mansfield Town","Milton Keynes Dons","Notts County","Oxford United","Peterborough United","Plymouth Argyle","Reading","Sheffield Wednesday","Stevenage","Stockport County","Wigan Athletic","Wycombe Wanderers"],
 		"Spagna|Liga 1":["Athletic Club","Atlético de Madrid","CA Osasuna","Celta Vigo","Deportivo Alavés","Elche CF","FC Barcelona","Getafe CF","Levante UD","Málaga CF","Racing Santander","Rayo Vallecano","RC Deportivo","RCD Espanyol","Real Betis","Real Madrid","Real Sociedad","Sevilla FC","Valencia CF","Villarreal CF"],
 		"Francia|Ligue 1":["Angers SCO","AJ Auxerre","Stade Brestois 29","Le Havre AC","Le Mans FC","RC Lens","FC Lorient","LOSC Lille","Olympique Lyonnais","Olympique de Marseille","AS Monaco","OGC Nice","Paris FC","Paris Saint-Germain","Stade Rennais","RC Strasbourg","Toulouse FC","ESTAC Troyes"],
-		"Germania|Bundesliga 1":["FC Bayern München","Borussia Dortmund","RB Leipzig","Bayer 04 Leverkusen","VfB Stuttgart","Eintracht Frankfurt","SC Freiburg","TSG Hoffenheim","1. FSV Mainz 05","VfL Wolfsburg","Borussia Mönchengladbach","Werder Bremen","FC Augsburg","1. FC Union Berlin","1. FC Köln","Hamburger SV","FC St. Pauli","1. FC Heidenheim"]
+		"Germania|Bundesliga 1":["FC Bayern München","Borussia Dortmund","RB Leipzig","Bayer 04 Leverkusen","VfB Stuttgart","Eintracht Frankfurt","SC Freiburg","TSG Hoffenheim","1. FSV Mainz 05","VfL Wolfsburg","Borussia Mönchengladbach","Werder Bremen","FC Augsburg","1. FC Union Berlin","1. FC Köln","Hamburger SV","FC St. Pauli","1. FC Heidenheim"],
+		"Germania|Bundesliga 2":["VfL Wolfsburg","1. FC Heidenheim","FC St. Pauli","Hannover 96","SV Darmstadt 98","1. FC Kaiserslautern","Hertha BSC","1. FC Nürnberg","VfL Bochum","Karlsruher SC","Dynamo Dresden","Holstein Kiel","Arminia Bielefeld","1. FC Magdeburg","Eintracht Braunschweig","Greuther Fürth","Energie Cottbus","VfL Osnabrück"]
 	}
 	if db.has(key):
 		return db[key].duplicate()
@@ -272,7 +275,9 @@ func _show_home() -> void:
 		if not fixture.is_empty():
 			_label("PROSSIMA PARTITA",20)
 			_label(fixture.home+" vs "+fixture.away,24)
-		_button("GIOCA PROSSIMA GIORNATA",_play_matchday)
+		else:
+			_label("TURNO DI RIPOSO: la tua squadra non ha una partita in questo turno.",20)
+		_button("GIOCA PROSSIMO TURNO",_play_matchday)
 	else:
 		_label("Campionato terminato.")
 		_button("AVANZA ALLA NUOVA STAGIONE",_new_season)
@@ -290,6 +295,7 @@ func _find_fixture(team: String) -> Dictionary:
 func _play_matchday() -> void:
 	if day >= fixtures.size():
 		return
+	var club_played := false
 	for match_data in fixtures[day]:
 		var home: String = match_data.home
 		var away: String = match_data.away
@@ -303,11 +309,19 @@ func _play_matchday() -> void:
 		var ag := _goals_for_power(away_power,home_power)
 		_update_result(home,away,hg,ag)
 		if home == club_name or away == club_name:
+			club_played = true
 			_apply_player_match(hg,ag)
 			cash += 80000+hg*7000
 			wage_budget -= _weekly_wages()
 			if hg > ag:
 				cash += 45000
+	if not club_played:
+		wage_budget -= _weekly_wages()
+		for p in players:
+			p.fitness = mini(100,int(p.fitness)+5)
+	for p in players:
+		if int(p.injury) > 0:
+			p.injury = maxi(0,int(p.injury)-1)
 	day += 1
 	_save_game()
 	_show_home()
@@ -629,5 +643,10 @@ func _load_game() -> void:
 	cup_winner = str(d.get("cup_winner",""))
 	european_status = str(d.get("european_status","Non qualificato"))
 	tactics = d.get("tactics",tactics)
+	# Migrazione automatica delle vecchie carriere con calendario fisso da 16 club.
+	if league.size() == 16 or fixtures.size() == 30:
+		day = 0
+		_generate_league()
+		_save_game()
 	_show_tab("Home")
 	status_label.text = "Carriera caricata."
