@@ -15,6 +15,8 @@ Football management career game for Android, built with Godot 4.4.1.
 - User-club and AI-club promotion/relegation within the selected country's pyramid, with generic end-of-season promotion playoffs.
 - Playable national cup prototype and playable UEFA Champions League, Europa League and Conference League simulations. UEFA competitions use two groups of four, semifinals and a final; qualification is based on domestic results or the cup.
 - Match report with a 1–90 minute commentary timeline, goals, cards, substitutions and player ratings. Substitution timing can be set to early, balanced or late.
+- Match reports include possession, total shots, shots on target, corners, fouls and passing accuracy, with consistency checks against the score.
+- Dedicated weekly training centre with five training plans, a per-matchweek session limit, gradual player development toward potential, fitness/morale effects and staff/facility bonuses.
 - Interactive tactical pitch: drag a player marker to another position to swap the two starters; formation and lineup are saved.
 - Tactical instructions influence team strength.
 - Transfer market mixes imported real players from the bundled database with generated prospects; filters cover real players, U21 players, bargains and high-rated players. Offers use fee, wage, role and club prestige.
