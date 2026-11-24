@@ -104,7 +104,7 @@ func _draw_pitch(area: Rect2) -> void:
 		var x := 0.10 + float(col) * 0.095 + drift + sin(elapsed * 0.9 + float(i)) * 0.008
 		var y := 0.18 + float(row) * 0.31 + (0.05 if col % 2 == 0 else -0.03) + cos(elapsed * 0.8 + float(i) * 0.7) * 0.009
 		var point := Vector2(area.position.x + x * area.size.x, area.position.y + y * area.size.y)
-		draw_ellipse(point + Vector2(0, 8), Vector2(10, 4), Color(0, 0, 0, 0.25))
+		_draw_ellipse(point + Vector2(0, 8), Vector2(10, 4), Color(0, 0, 0, 0.25))
 		draw_circle(point, 12, Color("#d8fbff"))
 		draw_colored_polygon(PackedVector2Array([point+Vector2(-8,-5),point+Vector2(-4,-10),point+Vector2(4,-10),point+Vector2(8,-5),point+Vector2(6,8),point+Vector2(-6,8)]), CYAN)
 		draw_line(point + Vector2(-5, -5), point + Vector2(5, -5), Color("#ffffff", 0.8), 1.2)
@@ -115,7 +115,7 @@ func _draw_pitch(area: Rect2) -> void:
 		var x := 0.90 - float(col) * 0.095 - drift - sin(elapsed * 0.9 + float(i) * 0.8) * 0.008
 		var y := 0.18 + float(row) * 0.31 + (0.05 if col % 2 == 0 else -0.03) + cos(elapsed * 0.8 + float(i) * 0.65) * 0.009
 		var point := Vector2(area.position.x + x * area.size.x, area.position.y + y * area.size.y)
-		draw_ellipse(point + Vector2(0, 8), Vector2(10, 4), Color(0, 0, 0, 0.25))
+		_draw_ellipse(point + Vector2(0, 8), Vector2(10, 4), Color(0, 0, 0, 0.25))
 		draw_circle(point, 12, Color("#ffe0e5"))
 		draw_colored_polygon(PackedVector2Array([point+Vector2(-8,-5),point+Vector2(-4,-10),point+Vector2(4,-10),point+Vector2(8,-5),point+Vector2(6,8),point+Vector2(-6,8)]), RED)
 		draw_line(point + Vector2(-5, -5), point + Vector2(5, -5), Color("#ffffff", 0.8), 1.2)
@@ -124,7 +124,7 @@ func _draw_pitch(area: Rect2) -> void:
 	for trail in range(4, 0, -1):
 		var offset := Vector2(float(trail) * 4.0, sin(elapsed * 1.8 - float(trail) * 0.22) * 3.0)
 		draw_circle(ball - offset, maxf(1.0, 4.5 - float(trail)), Color("#ffffff", 0.10 + 0.07 * float(4 - trail)))
-	draw_ellipse(ball + Vector2(0, 3), Vector2(9, 4), Color(0, 0, 0, 0.32))
+	_draw_ellipse(ball + Vector2(0, 3), Vector2(9, 4), Color(0, 0, 0, 0.32))
 	draw_circle(ball, 6, Color("#ffffff"))
 	draw_arc(ball, 7, 0, TAU, 20, Color("#1b2735"), 1.2)
 
