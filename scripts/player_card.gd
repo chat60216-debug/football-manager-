@@ -59,11 +59,11 @@ func setup(data: Dictionary) -> void:
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(name_label)
 	var details := Label.new()
-	details.text = str(player.get("age", 0)) + " anni\n" + str(player.get("fitness", 0)) + "% forma"
+	details.text = str(player.get("age", 0)) + " anni\n" + str(player.get("fitness", 0)) + "% forma\n" + str(player.get("nationality", ""))
 	details.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(details)
 	var hint := Label.new()
-	hint.text = "Ritratto generato • trascina per scambiare"
+	hint.text = ("Dati reali • avatar generato" if bool(player.get("real_player", false)) else "Giocatore generato • avatar unico") + "\ntrascina per scambiare"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_font_size_override("font_size", 10)
 	box.add_child(hint)
