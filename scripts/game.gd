@@ -172,31 +172,72 @@ func _make_player(index: int) -> Dictionary:
 	var age := randi_range(17, 34)
 	return {"id":randi(),"name":FIRST.pick_random()+" "+LAST.pick_random(),"position":pos,"age":age,"rating":rating,"potential":mini(92,rating+randi_range(2,20)),"wage":randi_range(900,4200),"value":rating*rating*1200,"morale":randi_range(65,90),"fitness":randi_range(82,100),"injury":0,"contract":randi_range(1,4),"role":ROLES.pick_random(),"goals":0,"assists":0,"apps":0,"yellow":0,"red":0}
 
+func _league_team_names() -> Array:
+	var key := country + "|" + division
+	var db := {
+		"Italia|Serie A":["Atalanta","Bologna","Cagliari","Como","Fiorentina","Frosinone","Genoa","Inter","Juventus","Lazio","Lecce","Milan","Monza","Napoli","Parma","Roma","Sassuolo","Torino","Udinese","Venezia"],
+		"Italia|Serie B":["Arezzo","Ascoli","Avellino","Benevento","Carrarese","Catanzaro","Cesena","Cremonese","Empoli","Hellas Verona","Juve Stabia","Mantova","Modena","Padova","Palermo","Pisa","Sampdoria","Südtirol","Vicenza","Virtus Entella"],
+		"Inghilterra|Premier League":["AFC Bournemouth","Arsenal","Aston Villa","Brentford","Brighton & Hove Albion","Chelsea","Coventry City","Crystal Palace","Everton","Fulham","Hull City","Ipswich Town","Leeds United","Liverpool","Manchester City","Manchester United","Newcastle United","Nottingham Forest","Sunderland","Tottenham Hotspur"],
+		"Spagna|Liga 1":["Athletic Club","Atlético de Madrid","CA Osasuna","Celta Vigo","Deportivo Alavés","Elche CF","FC Barcelona","Getafe CF","Levante UD","Málaga CF","Racing Santander","Rayo Vallecano","RC Deportivo","RCD Espanyol","Real Betis","Real Madrid","Real Sociedad","Sevilla FC","Valencia CF","Villarreal CF"],
+		"Francia|Ligue 1":["Angers SCO","AJ Auxerre","Stade Brestois 29","Le Havre AC","Le Mans FC","RC Lens","FC Lorient","LOSC Lille","Olympique Lyonnais","Olympique de Marseille","AS Monaco","OGC Nice","Paris FC","Paris Saint-Germain","Stade Rennais","RC Strasbourg","Toulouse FC","ESTAC Troyes"],
+		"Germania|Bundesliga 1":["FC Bayern München","Borussia Dortmund","RB Leipzig","Bayer 04 Leverkusen","VfB Stuttgart","Eintracht Frankfurt","SC Freiburg","TSG Hoffenheim","1. FSV Mainz 05","VfL Wolfsburg","Borussia Mönchengladbach","Werder Bremen","FC Augsburg","1. FC Union Berlin","1. FC Köln","Hamburger SV","FC St. Pauli","1. FC Heidenheim"]
+	}
+	if db.has(key):
+		return db[key].duplicate()
+	var known: Array = []
+	match country:
+		"Italia": known = ["Albinoleffe","Alcione Milano","Arzignano Valchiampo","Atalanta U23","Brescia","Caldiero Terme","Cavese","Cittadella","Crotone","Foggia","Giana Erminio","Gubbio","Latina","Lecco","Lumezzane","Novara","Perugia","Pescara","Pro Patria","Pro Vercelli","Renate","Rimini","Ternana","Triestina","Trapani","Virtus Verona"]
+		"Inghilterra": known = ["Birmingham City","Blackburn Rovers","Blackpool","Bolton Wanderers","Bradford City","Cardiff City","Charlton Athletic","Huddersfield Town","Leicester City","Middlesbrough","Millwall","Norwich City","Oxford United","Portsmouth","Preston North End","Queens Park Rangers","Reading","Sheffield United","Sheffield Wednesday","Stoke City","Swansea City","Watford","West Bromwich Albion","Wrexham"]
+		"Spagna": known = ["Albacete","Almería","Burgos CF","Cádiz CF","CD Castellón","CD Leganés","CD Mirandés","Córdoba CF","Eibar","FC Andorra","Granada CF","Huesca","Las Palmas","Real Oviedo","Real Zaragoza","Sporting Gijón","Tenerife","Valladolid"]
+		"Francia": known = ["Amiens SC","AS Saint-Étienne","Clermont Foot","EA Guingamp","FC Annecy","FC Metz","Grenoble Foot 38","Montpellier HSC","Pau FC","Red Star FC","SC Bastia","Stade Lavallois","USL Dunkerque"]
+		"Germania": known = ["VfL Wolfsburg","1. FC Heidenheim","FC St. Pauli","Hannover 96","SV Darmstadt 98","1. FC Kaiserslautern","Hertha BSC","1. FC Nürnberg","VfL Bochum","Karlsruher SC","Dynamo Dresden","Holstein Kiel","Arminia Bielefeld","1. FC Magdeburg","Eintracht Braunschweig","Greuther Fürth","Energie Cottbus","VfL Osnabrück"]
+	var target := 20
+	if division in ["Championship","League One","League Two"]:
+		target = 24
+	elif division == "Liga 2":
+		target = 22
+	elif division in ["Ligue 2","Ligue 3","Bundesliga 2"]:
+		target = 18
+	elif division == "Serie C":
+		target = 20
+	while known.size() > target:
+		known.pop_back()
+	while known.size() < target:
+		var generated := "FC " + LAST[known.size() % LAST.size()]
+		if not known.has(generated):
+			known.append(generated)
+	return known
+
 func _generate_league() -> void:
 	league.clear()
-	var names: Array = [club_name]
-	for team in CLUBS:
-		if names.size() < 16 and team != club_name:
-			names.append(team)
-	while names.size() < 16:
-		names.append("FC " + LAST.pick_random())
+	var names: Array = _league_team_names()
+	if not names.has(club_name):
+		names.append(club_name)
 	for team in names:
 		league.append({"name":team,"pts":0,"p":0,"w":0,"d":0,"l":0,"gf":0,"ga":0})
 	fixtures.clear()
 	var rotation: Array = names.duplicate()
-	for round_index in range(30):
+	if rotation.size() % 2 == 1:
+		rotation.append("BYE")
+	var first_leg: Array = []
+	var rounds_per_leg := rotation.size() - 1
+	for round_index in range(rounds_per_leg):
 		var games: Array = []
-		for j in range(8):
+		for j in range(rotation.size() / 2):
 			var home: String = rotation[j]
-			var away: String = rotation[15-j]
-			if round_index >= 15:
-				var temp := home
-				home = away
-				away = temp
-			games.append({"home":home,"away":away})
-		fixtures.append(games)
+			var away: String = rotation[rotation.size() - 1 - j]
+			if home != "BYE" and away != "BYE":
+				games.append({"home":home,"away":away})
+		first_leg.append(games)
 		var last_team: String = rotation.pop_back()
 		rotation.insert(1,last_team)
+	for round_data in first_leg:
+		fixtures.append(round_data)
+	for round_data in first_leg:
+		var return_games: Array = []
+		for match_data in round_data:
+			return_games.append({"home":match_data.away,"away":match_data.home})
+		fixtures.append(return_games)
 
 func _generate_market() -> void:
 	market.clear()
@@ -222,7 +263,7 @@ func _show_tab(tab: String) -> void:
 func _show_home() -> void:
 	_clear_content()
 	_label(club_name+" • "+division+" "+str(season),22)
-	_label("Giornata "+str(day+1)+" / 30")
+	_label("Turno "+str(day+1)+" / "+str(fixtures.size())+" • "+str(league.size())+" squadre")
 	_label("Cassa: €"+_money(cash)+" • Budget ingaggi settimanale: €"+_money(wage_budget))
 	_label("Rosa: "+str(players.size())+" calciatori • Media: "+str(_team_rating()))
 	_label("Mentalità: "+tactics.mentalita+" | Pressing: "+tactics.pressing+" | Costruzione: "+tactics.costruzione)
@@ -494,7 +535,7 @@ func _show_club() -> void:
 	_clear_content()
 	_label("GESTIONE CLUB",22)
 	_label(club_name+" • "+country+" • "+division)
-	_label("Stagione "+str(season)+" • Giornata "+str(day)+"/30")
+	_label("Stagione "+str(season)+" • Turno "+str(day)+"/"+str(fixtures.size()))
 	_label("Cassa: €"+_money(cash))
 	_label("Budget ingaggi settimanale: €"+_money(wage_budget))
 	_label("Stipendi rosa: €"+_money(_weekly_wages())+"/sett.")
