@@ -12,15 +12,6 @@ const GOLD := Color("#e7bd68")
 const ICE := Color("#8ce5ff")
 const MUTED := Color("#91a4ba")
 
-func _format_money(value: int) -> String:
-	var raw := str(maxi(0, value))
-	var formatted := ""
-	for i in range(raw.length()):
-		if i > 0 and (raw.length() - i) % 3 == 0:
-			formatted += "."
-		formatted += raw.substr(i, 1)
-	return formatted
-
 func _make_label(value: String, font_size: int, color: Color, centered := false) -> Label:
 	var label := Label.new()
 	label.text = value
@@ -36,115 +27,9 @@ func _make_small_button(caption: String, callback: Callable, disabled := false) 
 	button.disabled = disabled
 	button.custom_minimum_size = Vector2(0, 34)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button.add_theme_font_size_override("font_size", 11)
+	button.add_theme_font_size_override("font_size", 10)
 	button.pressed.connect(callback)
 	return button
-
-func setup(data: Dictionary) -> void:
-	player = data
-	custom_minimum_size = Vector2(166, 294)
-	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var shell := StyleBoxFlat.new()
-	shell.bg_color = Color("#111f31")
-	shell.border_color = Color("#344c67")
-	shell.set_border_width_all(1)
-	shell.set_corner_radius_all(14)
-	shell.shadow_color = Color(0, 0, 0, 0.32)
-	shell.shadow_size = 7
-	shell.shadow_offset = Vector2(0, 3)
-	shell.content_margin_left = 8
-	shell.content_margin_right = 8
-	shell.content_margin_top = 8
-	shell.content_margin_bottom = 8
-	add_theme_stylebox_override("panel", shell)
-
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	add_child(box)
-
-	var portrait_frame := PanelContainer.new()
-	portrait_frame.custom_minimum_size = Vector2(0, 132)
-	portrait_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var portrait_style := StyleBoxFlat.new()
-	portrait_style.bg_color = Color("#172d45")
-	portrait_style.border_color = Color("#4c6a88")
-	portrait_style.set_border_width_all(1)
-	portrait_style.set_corner_radius_all(10)
-	portrait_frame.add_theme_stylebox_override("panel", portrait_style)
-	box.add_child(portrait_frame)
-
-	var portrait = preload("res://scripts/player_portrait.gd").new()
-	portrait.custom_minimum_size = Vector2(0, 126)
-	portrait.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	portrait.seed_value = int(player.get("portrait_seed", player.get("id", 1)))
-	portrait.player_name = str(player.get("name", "Player"))
-	portrait_frame.add_child(portrait)
-
-	var rating_row := HBoxContainer.new()
-	rating_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	rating_row.add_theme_constant_override("separation", 7)
-	box.add_child(rating_row)
-	var rating_value := int(player.get("rating", 0))
-	var rating := _make_label(str(rating_value), 27, GOLD if rating_value >= 80 else ICE if rating_value >= 68 else Color("#d1dbe5"), true)
-	rating.add_theme_font_size_override("font_size", 27)
-	rating_row.add_child(rating)
-	var overall_tag := _make_label("OVR", 10, MUTED, true)
-	overall_tag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	rating_row.add_child(overall_tag)
-	var position_panel := PanelContainer.new()
-	position_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	position_panel.add_theme_stylebox_override("panel", _tag_style(Color("#24445f"), Color("#78dff1")))
-	var position_tag := _make_label(str(player.get("position", "—")), 12, Color("#ffffff"), true)
-	position_panel.add_child(position_tag)
-	box.add_child(position_panel)
-
-	var name_label := _make_label(str(player.get("name", "Giocatore")), 14, Color("#f2f6fb"), true)
-	name_label.add_theme_font_size_override("font_size", 14)
-	box.add_child(name_label)
-
-	var details := _make_label(str(player.get("age", 0)) + " ANNI   •   " + str(player.get("fitness", 0)) + "% FORMA", 10, MUTED, true)
-	box.add_child(details)
-
-	var squad_status := "TITOLARE" if bool(player.get("starting_xi", false)) else "PANCHINA / RISERVA"
-	var status_panel := PanelContainer.new()
-	status_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	status_panel.add_theme_stylebox_override("panel", _tag_style(Color("#3a3020") if bool(player.get("starting_xi", false)) else Color("#1b2b3e"), GOLD if bool(player.get("starting_xi", false)) else Color("#6685a4")))
-	var status_label := _make_label(squad_status, 9, GOLD if bool(player.get("starting_xi", false)) else Color("#a9c1d8"), true)
-	status_panel.add_child(status_label)
-	box.add_child(status_panel)
-
-	var condition := _make_label("", 10, Color("#a8d7bd"), true)
-	var injury_turns := int(player.get("injury", 0))
-	var suspension_turns := int(player.get("suspension", 0))
-	if injury_turns > 0:
-		condition.text = "INFORTUNATO • " + str(injury_turns) + " turni"
-		condition.add_theme_color_override("font_color", Color("#ff858b"))
-	elif suspension_turns > 0:
-		condition.text = "SQUALIFICATO • " + str(suspension_turns) + " turni"
-		condition.add_theme_color_override("font_color", Color("#ffc46e"))
-	elif bool(player.get("loan", false)):
-		condition.text = "IN PRESTITO"
-		condition.add_theme_color_override("font_color", GOLD)
-	else:
-		condition.text = "MORALE " + str(player.get("morale", 70)) + "%  •  " + str(player.get("contract", 0)) + " ANNI"
-	box.add_child(condition)
-
-	var wage := _make_label("€" + _format_money(int(player.get("wage", 0))) + " / SETT.", 10, MUTED, true)
-	box.add_child(wage)
-
-	var origin := _make_label("ROSA REALE" if bool(player.get("real_player", false)) else "PROFILO GENERATO", 9, Color("#78c8a1") if bool(player.get("real_player", false)) else Color("#9aabc0"), true)
-	box.add_child(origin)
-
-	var actions := HBoxContainer.new()
-	actions.add_theme_constant_override("separation", 5)
-	box.add_child(actions)
-	var player_id := int(player.get("id", -1))
-	var profile := _make_small_button("PROFILO", func(): detail_requested.emit(player_id))
-	actions.add_child(profile)
-	var renew := _make_small_button("RINNOVA" if not bool(player.get("loan", false)) else "PRESTITO", func(): renew_requested.emit(player_id), bool(player.get("loan", false)))
-	actions.add_child(renew)
-	var sell := _make_small_button("VENDI", func(): sell_requested.emit(player_id), bool(player.get("loan", false)))
-	box.add_child(sell)
 
 func _tag_style(background: Color, border: Color) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
@@ -152,11 +37,122 @@ func _tag_style(background: Color, border: Color) -> StyleBoxFlat:
 	style.border_color = border
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(6)
-	style.content_margin_left = 8
-	style.content_margin_right = 8
+	style.content_margin_left = 7
+	style.content_margin_right = 7
 	style.content_margin_top = 3
 	style.content_margin_bottom = 3
 	return style
+
+func _progress_row(parent: VBoxContainer, caption: String, value: int, tint: Color) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 5)
+	parent.add_child(row)
+	var title := _make_label(caption, 9, MUTED)
+	title.custom_minimum_size = Vector2(52, 16)
+	row.add_child(title)
+	var bar := ProgressBar.new()
+	bar.min_value = 0
+	bar.max_value = 100
+	bar.value = clampi(value, 0, 100)
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, 8)
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.add_theme_stylebox_override("background", _tag_style(Color("#0a1725"), Color("#23394f")))
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = tint
+	fill.set_corner_radius_all(4)
+	bar.add_theme_stylebox_override("fill", fill)
+	row.add_child(bar)
+	var score := _make_label(str(value), 9, Color("#dce8f4"))
+	score.custom_minimum_size = Vector2(25, 16)
+	score.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(score)
+
+func setup(data: Dictionary) -> void:
+	player = data
+	custom_minimum_size = Vector2(190, 326)
+	size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var starter := bool(player.get("starting_xi", false))
+	var captain := bool(player.get("captain", false))
+	var injured := int(player.get("injury", 0)) > 0
+	var suspended := int(player.get("suspension", 0)) > 0
+	var shell := StyleBoxFlat.new()
+	shell.bg_color = Color("#14253a") if starter else Color("#101e30")
+	shell.border_color = GOLD if captain else Color("#39718a") if starter else Color("#293e55")
+	shell.set_border_width_all(2 if captain else 1)
+	shell.set_corner_radius_all(13)
+	shell.shadow_color = Color(0, 0, 0, 0.28)
+	shell.shadow_size = 5
+	shell.shadow_offset = Vector2(0, 2)
+	shell.content_margin_left = 8
+	shell.content_margin_right = 8
+	shell.content_margin_top = 8
+	shell.content_margin_bottom = 8
+	add_theme_stylebox_override("panel", shell)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 5)
+	add_child(box)
+
+	var hero := PanelContainer.new()
+	hero.custom_minimum_size = Vector2(0, 120)
+	var hero_style := StyleBoxFlat.new()
+	hero_style.bg_color = Color("#0c1a2a")
+	hero_style.border_color = Color("#314b65")
+	hero_style.set_border_width_all(1)
+	hero_style.set_corner_radius_all(9)
+	hero.add_theme_stylebox_override("panel", hero_style)
+	box.add_child(hero)
+	var portrait = preload("res://scripts/player_portrait.gd").new()
+	portrait.custom_minimum_size = Vector2(0, 116)
+	portrait.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	portrait.seed_value = int(player.get("portrait_seed", player.get("id", 1)))
+	portrait.player_name = str(player.get("name", "Player"))
+	hero.add_child(portrait)
+
+	var identity := HBoxContainer.new()
+	identity.add_theme_constant_override("separation", 5)
+	box.add_child(identity)
+	var rating_value := int(player.get("rating", 0))
+	var rating := _make_label(str(rating_value), 28, GOLD if rating_value >= 80 else ICE if rating_value >= 68 else Color("#d1dbe5"))
+	rating.add_theme_font_size_override("font_size", 28)
+	identity.add_child(rating)
+	var rating_meta := VBoxContainer.new()
+	rating_meta.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rating_meta.add_theme_constant_override("separation", 0)
+	identity.add_child(rating_meta)
+	rating_meta.add_child(_make_label("OVERALL", 9, MUTED))
+	rating_meta.add_child(_make_label(str(player.get("position", "—")) + "  •  " + str(player.get("age", 0)) + " ANNI", 11, Color("#edf4fb")))
+	var status := "CAPITANO" if captain else "TITOLARE" if starter else "RISERVA"
+	var status_panel := PanelContainer.new()
+	status_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	status_panel.add_theme_stylebox_override("panel", _tag_style(Color("#3b3020") if captain or starter else Color("#1b2e43"), GOLD if captain or starter else Color("#58718c")))
+	var status_label := _make_label(status, 9, GOLD if captain or starter else Color("#b5c8dc"), true)
+	status_panel.add_child(status_label)
+	identity.add_child(status_panel)
+
+	var player_name := _make_label(str(player.get("name", "Giocatore")), 13, Color("#f3f7fc"))
+	player_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	box.add_child(player_name)
+	var club_line := _make_label(str(player.get("club", "Club non indicato")), 9, MUTED)
+	club_line.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	box.add_child(club_line)
+
+	_progress_row(box, "CONDIZ.", int(player.get("fitness", 100)), Color("#75d7a0") if int(player.get("fitness", 100)) >= 70 else Color("#e6b65e") if int(player.get("fitness", 100)) >= 45 else Color("#ee777e"))
+	_progress_row(box, "MORALE", int(player.get("morale", 70)), Color("#79cbe8") if int(player.get("morale", 70)) >= 55 else Color("#e6b65e"))
+	var condition := "INFORTUNATO • " + str(player.get("injury", 0)) + " TURNI" if injured else "SQUALIFICATO • " + str(player.get("suspension", 0)) + " TURNI" if suspended else "IN PRESTITO" if bool(player.get("loan", false)) else str(player.get("contract", 0)) + " ANNI DI CONTRATTO"
+	var condition_label := _make_label(condition, 9, Color("#ff8d93") if injured else Color("#ffc46e") if suspended or bool(player.get("loan", false)) else Color("#9db2c7"))
+	box.add_child(condition_label)
+	var wage := _make_label("€" + str(int(player.get("wage", 0))) + " / SETT.   •   " + ("DATI IMPORTATI" if bool(player.get("real_player", false)) else "GENERATO"), 9, MUTED)
+	box.add_child(wage)
+
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 5)
+	box.add_child(actions)
+	var player_id := int(player.get("id", -1))
+	actions.add_child(_make_small_button("PROFILO", func(): detail_requested.emit(player_id)))
+	actions.add_child(_make_small_button("RINNOVA", func(): renew_requested.emit(player_id), bool(player.get("loan", false))))
+	box.add_child(_make_small_button("VENDI / LISTA", func(): sell_requested.emit(player_id), bool(player.get("loan", false))))
 
 func _get_drag_data(_at_position: Vector2) -> Variant:
 	var preview := PanelContainer.new()
