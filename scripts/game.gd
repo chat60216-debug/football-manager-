@@ -158,6 +158,7 @@ func _new_career() -> void:
 	country = COUNTRIES[setup_country.selected]
 	division = setup_division.get_item_text(setup_division.selected)
 	season = 2026
+	last_season_message = ""
 	day = 0
 	cash = 2500000
 	wage_budget = 65000
@@ -329,9 +330,9 @@ func _play_matchday() -> void:
 		var home_power := _club_power(home)+3
 		var away_power := _club_power(away)
 		if home == club_name:
-			home_power = _team_rating()+3
+			home_power = _club_power(club_name) + 3
 		if away == club_name:
-			away_power = _team_rating()
+			away_power = _club_power(club_name)
 		var hg := _goals_for_power(home_power,away_power)
 		var ag := _goals_for_power(away_power,home_power)
 		_update_result(home,away,hg,ag)
@@ -394,7 +395,17 @@ func _team_record(team: String) -> Dictionary:
 
 func _club_power(team: String) -> int:
 	if team == club_name:
-		return _team_rating()
+		var power := _team_rating()
+		match str(tactics.get("mentalita", "Equilibrata")):
+			"Offensiva": power += 3
+			"Difensiva": power -= 1
+		match str(tactics.get("pressing", "Medio")):
+			"Alto": power += 2
+			"Basso": power -= 1
+		match str(tactics.get("costruzione", "Mista")):
+			"Corta": power += 1
+			"Diretta": power += 1
+		return clampi(power, 35, 99)
 	return randi_range(58,78)
 
 func _team_rating() -> int:
@@ -1012,7 +1023,9 @@ func _upgrade_staff(role: String) -> void:
 	cash -= cost
 	staff[role] = level + 1
 	if role == "academy":
+		var current_prospects: Array = youth_players.duplicate(true)
 		_generate_youth_intake()
+		youth_players.append_array(current_prospects)
 	_save_game()
 	if selected_tab == "Giovanili":
 		_show_youth()
