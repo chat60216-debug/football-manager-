@@ -7,6 +7,15 @@ func _fail(message: String) -> void:
 	push_error("DYNASTY SMOKE TEST FAILED: " + message)
 	quit(1)
 
+func _find_script_recursive(node: Node, target_script: Script) -> Node:
+	if node.get_script() == target_script:
+		return node
+	for child in node.get_children():
+		var found := _find_script_recursive(child, target_script)
+		if found != null:
+			return found
+	return null
+
 func _run_smoke_test() -> void:
 	var packed := load("res://scenes/main.tscn") as PackedScene
 	if packed == null:
@@ -412,11 +421,7 @@ func _run_smoke_test() -> void:
 	if not captain_selector_found:
 		_fail("formation screen did not display a captain selector")
 		return
-	var pitch_node: Control = null
-	for child in game.content.get_children():
-		if child.get_script() == load("res://scripts/tactical_pitch.gd"):
-			pitch_node = child
-			break
+	var pitch_node := _find_script_recursive(game, load("res://scripts/tactical_pitch.gd")) as Control
 	if pitch_node == null:
 		_fail("interactive tactical pitch did not load")
 		return
@@ -494,11 +499,7 @@ func _run_smoke_test() -> void:
 	if game.content.get_child_count() < 90:
 		_fail("match report UI did not display the full minute-by-minute timeline")
 		return
-	var visualizer_node: Control = null
-	for content_child in game.content.get_children():
-		if content_child.get_script() == load("res://scripts/match_visualizer.gd"):
-			visualizer_node = content_child
-			break
+	var visualizer_node := _find_script_recursive(game, load("res://scripts/match_visualizer.gd")) as Control
 	if visualizer_node == null:
 		_fail("match visualizer did not load with the match report")
 		return
