@@ -212,6 +212,14 @@ func _run_smoke_test() -> void:
 	if game.match_report.is_empty():
 		_fail("league match did not create a report")
 		return
+	var saved_user_fixture_result := false
+	for recorded_result in game.match_results:
+		if int(recorded_result.get("season", -1)) == game.season and int(recorded_result.get("day", -1)) == 0 and (str(recorded_result.get("home", "")) == game.club_name or str(recorded_result.get("away", "")) == game.club_name):
+			saved_user_fixture_result = true
+			break
+	if not saved_user_fixture_result:
+		_fail("league match result was not stored for the season calendar")
+		return
 	if game.match_report.get("events", []).size() < 90:
 		_fail("match timeline is not minute-by-minute")
 		return
