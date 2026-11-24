@@ -8,31 +8,6 @@ signal detail_requested(player_id: int)
 
 var player: Dictionary = {}
 
-class PlayerPortrait extends Control:
-	var seed_value: int = 1
-	func _draw() -> void:
-		var rng := RandomNumberGenerator.new()
-		rng.seed = seed_value
-		var skin_tones := [Color("#f2c7a5"), Color("#d9a078"), Color("#b97850"), Color("#8d573d"), Color("#f0d0b0"), Color("#c58b68")]
-		var hair_colors := [Color("#241a18"), Color("#493126"), Color("#17191f"), Color("#a97842"), Color("#d6c18d")]
-		var kit_colors := [Color("#7d2be0"), Color("#168acb"), Color("#d8324b"), Color("#e5e9ef"), Color("#16865c"), Color("#e39b20")]
-		var skin: Color = skin_tones[rng.randi_range(0, skin_tones.size() - 1)]
-		var hair: Color = hair_colors[rng.randi_range(0, hair_colors.size() - 1)]
-		var kit: Color = kit_colors[rng.randi_range(0, kit_colors.size() - 1)]
-		var w := size.x
-		var h := size.y
-		draw_rect(Rect2(Vector2.ZERO, size), Color("#14253b"))
-		draw_rect(Rect2(Vector2(0, h * 0.72), Vector2(w, h * 0.28)), Color("#203d5b"))
-		draw_colored_polygon(PackedVector2Array([Vector2(w*0.12,h),Vector2(w*0.22,h*0.76),Vector2(w*0.38,h*0.68),Vector2(w*0.62,h*0.68),Vector2(w*0.78,h*0.76),Vector2(w*0.9,h)]), kit)
-		draw_rect(Rect2(Vector2(w*0.43,h*0.59),Vector2(w*0.14,h*0.16)),skin)
-		draw_circle(Vector2(w*0.5,h*0.39),minf(w,h)*0.235,skin)
-		draw_circle(Vector2(w*0.5,h*0.29),minf(w,h)*0.235,hair)
-		draw_rect(Rect2(Vector2(w*0.265,h*0.31),Vector2(w*0.47,h*0.09)),hair)
-		draw_circle(Vector2(w*0.415,h*0.4),w*0.018,Color("#20212a"))
-		draw_circle(Vector2(w*0.585,h*0.4),w*0.018,Color("#20212a"))
-		draw_line(Vector2(w*0.46,h*0.49),Vector2(w*0.54,h*0.49),Color("#854f43"),maxf(1.0,w*0.012))
-		draw_rect(Rect2(Vector2(w*0.31,h*0.67),Vector2(w*0.38,h*0.035)),Color(1,1,1,0.65))
-
 func _format_money(value: int) -> String:
 	var raw := str(maxi(0, value))
 	var formatted := ""
@@ -48,7 +23,7 @@ func setup(data: Dictionary) -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 3)
 	add_child(box)
-	var portrait := PlayerPortrait.new()
+	var portrait = preload("res://scripts/player_portrait.gd").new()
 	portrait.custom_minimum_size = Vector2(120, 112)
 	portrait.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	portrait.seed_value = int(player.get("portrait_seed", player.get("id", 1)))
