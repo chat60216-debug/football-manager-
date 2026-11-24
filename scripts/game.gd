@@ -195,7 +195,7 @@ func _build_shell() -> void:
 	navigation = VBoxContainer.new()
 	navigation.add_theme_constant_override("separation", 5)
 	side_box.add_child(navigation)
-	for tab in ["Home","Rosa","Formazione","Allenamento","Calendario","Classifica","Mercato","Coppe","UEFA","Club","Giovanili","Staff","Statistiche","Società"]:
+	for tab in ["Home","Rosa","Formazione","Tattiche","Allenamento","Calendario","Classifica","Mercato","Coppe","UEFA","Club","Giovanili","Staff","Statistiche","Società"]:
 		var button := Button.new()
 		button.text = tab
 		button.custom_minimum_size = Vector2(0, 39)
@@ -758,6 +758,7 @@ func _show_tab(tab: String) -> void:
 		"Home": _show_home()
 		"Rosa": _show_squad()
 		"Formazione": _show_formation()
+		"Tattiche": _show_tactics()
 		"Allenamento": _show_training()
 		"Mercato": _show_market()
 		"Classifica": _show_table()
