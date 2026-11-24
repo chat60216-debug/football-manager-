@@ -114,8 +114,8 @@ func _make_dynasty_theme() -> Theme:
 	game_theme.set_font_size("font_size", "Button", 15)
 	game_theme.set_font_size("font_size", "Label", 16)
 	var normal := StyleBoxFlat.new()
-	normal.bg_color = Color("#172536")
-	normal.border_color = Color("#39495b")
+	normal.bg_color = Color("#111e34")
+	normal.border_color = Color("#2c4566")
 	normal.set_border_width_all(1)
 	normal.set_corner_radius_all(12)
 	normal.content_margin_left = 12
@@ -123,8 +123,8 @@ func _make_dynasty_theme() -> Theme:
 	normal.content_margin_top = 9
 	normal.content_margin_bottom = 9
 	var hover := StyleBoxFlat.new()
-	hover.bg_color = Color("#2a3544")
-	hover.border_color = Color("#d6b66f")
+	hover.bg_color = Color("#1b3658")
+	hover.border_color = Color("#7de2f3")
 	hover.set_border_width_all(2)
 	hover.set_corner_radius_all(12)
 	hover.content_margin_left = 12
@@ -132,8 +132,8 @@ func _make_dynasty_theme() -> Theme:
 	hover.content_margin_top = 9
 	hover.content_margin_bottom = 9
 	var pressed := StyleBoxFlat.new()
-	pressed.bg_color = Color("#8a682d")
-	pressed.border_color = Color("#f0d28a")
+	pressed.bg_color = Color("#174e70")
+	pressed.border_color = Color("#a7f2ff")
 	pressed.set_border_width_all(1)
 	pressed.set_corner_radius_all(12)
 	pressed.content_margin_left = 12
@@ -146,8 +146,8 @@ func _make_dynasty_theme() -> Theme:
 		game_theme.set_stylebox("pressed", control_type, pressed)
 		game_theme.set_stylebox("focus", control_type, hover)
 	var field := StyleBoxFlat.new()
-	field.bg_color = Color("#0d1b2c")
-	field.border_color = Color("#35516d")
+	field.bg_color = Color("#081426")
+	field.border_color = Color("#376184")
 	field.set_border_width_all(1)
 	field.set_corner_radius_all(10)
 	field.content_margin_left = 12
@@ -159,8 +159,8 @@ func _make_dynasty_theme() -> Theme:
 	game_theme.set_color("font_color", "LineEdit", Color("#f3f7ff"))
 	game_theme.set_color("font_placeholder_color", "LineEdit", Color("#8193aa"))
 	var panel := StyleBoxFlat.new()
-	panel.bg_color = Color("#101f32")
-	panel.border_color = Color("#243d59")
+	panel.bg_color = Color("#0c1930")
+	panel.border_color = Color("#294b70")
 	panel.set_border_width_all(1)
 	panel.set_corner_radius_all(16)
 	panel.content_margin_left = 14
@@ -174,11 +174,11 @@ func _build_shell() -> void:
 	for child in get_children():
 		child.queue_free()
 	var bg := ColorRect.new()
-	bg.color = Color("#07101d")
+	bg.color = Color("#050b17")
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 	var accent := ColorRect.new()
-	accent.color = Color("#d6a94b")
+	accent.color = Color("#42c9e8")
 	accent.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	accent.custom_minimum_size = Vector2(0, 4)
 	add_child(accent)
