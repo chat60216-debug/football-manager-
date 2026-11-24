@@ -10,7 +10,9 @@ Mobile-first 2D football management prototype built with Godot 4.4.1.
 - Matchday simulation, league table, player fitness/morale/injuries, club finances.
 - Procedurally generated fictional squad and transfer market.
 - Transfer offers with fee, wage, contract duration and promised role; player sales.
-- Tactical settings, national cup prototype and local save/load.
+- Tactical settings that modify match strength, national cup prototype and local save/load.
+- User-club promotion/relegation based on final league position, with season history and financial rewards or penalties.
+- Contract expiry at season end and weekly wage payments deducted from club cash.
 - Youth academy with generated prospects, promotion to the first team and academy upgrades.
 - Staff upgrades for coaching, scouting, fitness/medical support and youth development; coach and scout levels affect gameplay.
 - Player statistics for goals, assists, appearances, cards, injuries and suspensions.
@@ -22,11 +24,10 @@ This repository is not yet a full commercial-grade football manager. The followi
 - Complete and season-accurate club databases for every selectable division (including all Serie C groups, LaLiga 2 and Ligue 3).
 - Real-world player database, licensed portraits, badges and accurate player attributes. Current players are fictional and generated.
 - A proper formation/pitch lineup with position-aware drag-and-drop between starting XI and bench (the current card swap changes squad order only).
-- Full league pyramid with promotion/relegation, playoffs and cross-division club movement.
+- AI club promotion/relegation, playoffs and cross-division movement for every team (currently only the user club moves automatically).
 - Complete national cup formats and UEFA Champions League, Europa League and Conference League seasons with qualification, fixtures and prize money.
-- More complete transfer AI, staff negotiations, facilities, sponsorship, board objectives and a full financial model.
-- Match engine with minute-by-minute commentary, player ratings, advanced tactical effects and multi-season balance testing.
-- Full league pyramid with AI club promotion/relegation and playoffs.
+- More complete transfer AI, staff contracts, sponsorship, board objectives and a complete financial model.
+- Detailed match engine with minute-by-minute commentary, match ratings, substitutions and multi-season balance testing.
 - Automated gameplay regression tests and installation testing on physical devices.
 
 ## Run
