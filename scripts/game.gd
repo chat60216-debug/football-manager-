@@ -251,8 +251,7 @@ func _update_setup_real_clubs() -> void:
 		division = old_division
 	names.sort()
 	for club in names:
-		if not setup_real_club.has_item(str(club)):
-			setup_real_club.add_item(str(club))
+		setup_real_club.add_item(str(club))
 
 func _players_for_real_club(club: String) -> Array:
 	var result: Array = []
@@ -1042,7 +1041,12 @@ func _initialise_pyramid() -> void:
 	var old_division := division
 	for div in DIVISIONS.get(country, []):
 		division = str(div)
-		var names: Array = _league_team_names()
+		var names: Array = []
+		if division == old_division and not league.is_empty():
+			for row in league:
+				names.append(str(row.get("name", "")))
+		else:
+			names = _league_team_names()
 		if division == old_division and not names.has(club_name):
 			if names.size() > 0: names.pop_back()
 			names.append(club_name)
