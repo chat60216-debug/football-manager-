@@ -79,6 +79,10 @@ var selected_market_player := -1
 var market_filter := "Tutti"
 var market_sort := "Valutazione"
 var market_search_text := ""
+var squad_filter := "Tutti"
+var squad_sort := "Valutazione"
+var squad_search_text := ""
+var selected_formation_slot := 10
 var ui_built := false
 
 func _notification(what: int) -> void:
@@ -1356,79 +1360,295 @@ func _ensure_captain() -> void:
 func _show_formation() -> void:
 	_clear_content()
 	_ensure_lineup()
-	_label("FORMAZIONE TITOLARE", 22)
-	_label("Scegli il modulo e assegna un calciatore a ogni posizione. La media della squadra e la simulazione useranno gli undici titolari.")
+	_ensure_captain()
+	_label("FORMAZIONE  /  TACTICAL BOARD", 25)
+	_label("Disegna il tuo undici: scegli il sistema, cambia i giocatori, trascinali sul campo e prepara la squadra alla prossima partita.", 14)
+
+	var overview := HBoxContainer.new()
+	overview.add_theme_constant_override("separation", 9)
+	content.add_child(overview)
+	var module_box := VBoxContainer.new()
+	module_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	overview.add_child(module_box)
+	var module_caption := Label.new()
+	module_caption.text = "SISTEMA DI GIOCO"
+	module_caption.add_theme_font_size_override("font_size", 10)
+	module_caption.add_theme_color_override("font_color", Color("#8fa7bf"))
+	module_box.add_child(module_caption)
 	var modules := OptionButton.new()
-	for module in ["4-3-3","4-2-3-1","4-4-2","3-5-2"]:
+	modules.custom_minimum_size = Vector2(0, 43)
+	for module in ["4-3-3", "4-2-3-1", "4-4-2", "3-5-2"]:
 		modules.add_item(module)
-	modules.select(["4-3-3","4-2-3-1","4-4-2","3-5-2"].find(formation))
-	modules.item_selected.connect(func(i):
+	modules.select(maxi(0, ["4-3-3", "4-2-3-1", "4-4-2", "3-5-2"].find(formation)))
+	modules.item_selected.connect(func(i: int):
 		formation = modules.get_item_text(i)
 		lineup_ids.clear()
 		_ensure_lineup()
+		_ensure_captain()
+		_save_game()
 		_show_formation()
 	)
-	content.add_child(modules)
-	_ensure_captain()
+	module_box.add_child(modules)
+
+	var strength_box := VBoxContainer.new()
+	strength_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	overview.add_child(strength_box)
+	var strength_caption := Label.new()
+	strength_caption.text = "VALUTAZIONE XI"
+	strength_caption.add_theme_font_size_override("font_size", 10)
+	strength_caption.add_theme_color_override("font_color", Color("#8fa7bf"))
+	strength_box.add_child(strength_caption)
+	var strength_value := Label.new()
+	strength_value.text = str(_team_rating()) + "  OVR"
+	strength_value.add_theme_font_size_override("font_size", 25)
+	strength_value.add_theme_color_override("font_color", Color("#e7bd68"))
+	strength_box.add_child(strength_value)
+
+	var fitness_box := VBoxContainer.new()
+	fitness_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	overview.add_child(fitness_box)
+	var fitness_caption := Label.new()
+	fitness_caption.text = "CONDIZIONE MEDIA"
+	fitness_caption.add_theme_font_size_override("font_size", 10)
+	fitness_caption.add_theme_color_override("font_color", Color("#8fa7bf"))
+	fitness_box.add_child(fitness_caption)
+	var fitness_total := 0
+	for player_id in lineup_ids:
+		for p in players:
+			if int(p.get("id", -1)) == int(player_id):
+				fitness_total += int(p.get("fitness", 100))
+				break
+	var fitness_value := Label.new()
+	fitness_value.text = str(int(round(float(fitness_total) / 11.0))) + "%"
+	fitness_value.add_theme_font_size_override("font_size", 25)
+	fitness_value.add_theme_color_override("font_color", Color("#83d6a6"))
+	fitness_box.add_child(fitness_value)
+
 	var captain_row := HBoxContainer.new()
-	captain_row.add_theme_constant_override("separation", 10)
+	captain_row.add_theme_constant_override("separation", 9)
 	content.add_child(captain_row)
 	var captain_label := Label.new()
 	captain_label.text = "CAPITANO"
-	captain_label.custom_minimum_size = Vector2(100, 42)
+	captain_label.custom_minimum_size = Vector2(86, 42)
 	captain_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	captain_label.add_theme_color_override("font_color", Color("#e7bd68"))
 	captain_row.add_child(captain_label)
 	var captain_choice := OptionButton.new()
+	captain_choice.custom_minimum_size = Vector2(0, 42)
 	captain_choice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for player_id in lineup_ids:
 		for squad_player in players:
 			if int(squad_player.get("id", -1)) == int(player_id):
-				captain_choice.add_item(str(squad_player.get("name", "Giocatore")) + " • " + str(squad_player.get("rating", 0)) + " OVR")
+				captain_choice.add_item(str(squad_player.get("name", "Giocatore")) + "  •  " + str(squad_player.get("rating", 0)) + " OVR")
 				if int(player_id) == captain_id:
 					captain_choice.select(captain_choice.item_count - 1)
 				break
-	captain_choice.item_selected.connect(func(option_index):
+	captain_choice.item_selected.connect(func(option_index: int):
 		if option_index >= 0 and option_index < lineup_ids.size():
 			captain_id = int(lineup_ids[option_index])
 			_save_game()
 			_show_formation()
 	)
 	captain_row.add_child(captain_choice)
-	var positions := _formation_positions()
+	var captain_hint := Label.new()
+	captain_hint.text = "La fascia assegna un piccolo bonus di leadership."
+	captain_hint.add_theme_font_size_override("font_size", 10)
+	captain_hint.add_theme_color_override("font_color", Color("#849ab0"))
+	captain_row.add_child(captain_hint)
+
+	var tactical_layout := HBoxContainer.new()
+	tactical_layout.add_theme_constant_override("separation", 12)
+	tactical_layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_child(tactical_layout)
+
+	var pitch_panel := PanelContainer.new()
+	pitch_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pitch_panel.size_flags_stretch_ratio = 1.25
+	pitch_panel.custom_minimum_size = Vector2(0, 492)
+	var pitch_style := StyleBoxFlat.new()
+	pitch_style.bg_color = Color("#0b1a29")
+	pitch_style.border_color = Color("#2d4960")
+	pitch_style.set_border_width_all(1)
+	pitch_style.set_corner_radius_all(14)
+	pitch_panel.add_theme_stylebox_override("panel", pitch_style)
+	tactical_layout.add_child(pitch_panel)
 	var pitch = preload("res://scripts/tactical_pitch.gd").new()
+	pitch.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pitch.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	pitch.set_lineup(players, lineup_ids, formation)
 	pitch.slots_swapped.connect(Callable(self, "_swap_lineup_slots"))
-	content.add_child(pitch)
+	pitch_panel.add_child(pitch)
+
+	var lineup_panel := PanelContainer.new()
+	lineup_panel.custom_minimum_size = Vector2(390, 492)
+	lineup_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var lineup_style := StyleBoxFlat.new()
+	lineup_style.bg_color = Color("#101f31")
+	lineup_style.border_color = Color("#2d4960")
+	lineup_style.set_border_width_all(1)
+	lineup_style.set_corner_radius_all(14)
+	lineup_panel.add_theme_stylebox_override("panel", lineup_style)
+	tactical_layout.add_child(lineup_panel)
+	var lineup_box := VBoxContainer.new()
+	lineup_box.add_theme_constant_override("separation", 6)
+	lineup_panel.add_child(lineup_box)
+	var lineup_heading := Label.new()
+	lineup_heading.text = "UNDICI TITOLARE  /  CAMBIA RUOLO"
+	lineup_heading.add_theme_font_size_override("font_size", 12)
+	lineup_heading.add_theme_color_override("font_color", Color("#e7bd68"))
+	lineup_box.add_child(lineup_heading)
+	var lineup_scroll := ScrollContainer.new()
+	lineup_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	lineup_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	lineup_box.add_child(lineup_scroll)
+	var lineup_rows := VBoxContainer.new()
+	lineup_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lineup_rows.add_theme_constant_override("separation", 5)
+	lineup_scroll.add_child(lineup_rows)
+	var positions := _formation_positions()
 	for i in range(positions.size()):
 		var slot_index := i
-		var row := HBoxContainer.new()
-		content.add_child(row)
-		var position_label := Label.new()
-		position_label.text = str(i + 1) + ". " + str(positions[i])
-		position_label.custom_minimum_size = Vector2(78, 42)
-		row.add_child(position_label)
-		var choice := OptionButton.new()
-		choice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		for p in players:
-			var availability_tag := " • INF." if int(p.get("injury", 0)) > 0 else " • SQ." if int(p.get("suspension", 0)) > 0 else ""
-			choice.add_item(str(p.get("name", "Giocatore")) + " • " + str(p.get("rating", 0)) + " OVR" + availability_tag)
-			if int(p.get("injury", 0)) > 0 or int(p.get("suspension", 0)) > 0:
-				choice.set_item_disabled(choice.item_count - 1, true)
-		var selected_index := 0
+		var current_player: Dictionary = {}
+		var current_player_index := -1
 		for j in range(players.size()):
 			if j < lineup_ids.size() and int(players[j].get("id", -1)) == int(lineup_ids[i]):
-				selected_index = j
+				current_player = players[j]
+				current_player_index = j
 				break
-		if players.size() > 0:
-			choice.select(selected_index)
-		choice.item_selected.connect(func(option_index):
+		var row := PanelContainer.new()
+		var row_style := StyleBoxFlat.new()
+		row_style.bg_color = Color("#142a40") if i % 2 == 0 else Color("#112338")
+		row_style.border_color = Color("#2c465e")
+		row_style.set_border_width_all(1)
+		row_style.set_corner_radius_all(8)
+		row_style.content_margin_left = 6
+		row_style.content_margin_right = 6
+		row_style.content_margin_top = 4
+		row_style.content_margin_bottom = 4
+		row.add_theme_stylebox_override("panel", row_style)
+		lineup_rows.add_child(row)
+		var row_content := HBoxContainer.new()
+		row_content.add_theme_constant_override("separation", 5)
+		row.add_child(row_content)
+		var role := Label.new()
+		role.text = str(i + 1).pad_zeros(2) + "\n" + str(positions[i])
+		role.custom_minimum_size = Vector2(42, 39)
+		role.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		role.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		role.add_theme_font_size_override("font_size", 10)
+		role.add_theme_color_override("font_color", Color("#72d8e8"))
+		row_content.add_child(role)
+		var player_info := VBoxContainer.new()
+		player_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		player_info.add_theme_constant_override("separation", 1)
+		row_content.add_child(player_info)
+		var player_name := Label.new()
+		player_name.text = str(current_player.get("name", "Slot libero"))
+		player_name.add_theme_font_size_override("font_size", 11)
+		player_name.add_theme_color_override("font_color", Color("#f0f5fb"))
+		player_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		player_info.add_child(player_name)
+		var player_meta := Label.new()
+		player_meta.text = str(current_player.get("rating", 0)) + " OVR   •   " + str(current_player.get("fitness", 0)) + "% forma   •   " + str(current_player.get("morale", 0)) + "% morale"
+		player_meta.add_theme_font_size_override("font_size", 9)
+		player_meta.add_theme_color_override("font_color", Color("#8fa7bf"))
+		player_info.add_child(player_meta)
+		var choice := OptionButton.new()
+		choice.custom_minimum_size = Vector2(138, 36)
+		choice.add_theme_font_size_override("font_size", 10)
+		for p in players:
+			var availability_tag := "  • INF." if int(p.get("injury", 0)) > 0 else "  • SQ." if int(p.get("suspension", 0)) > 0 else ""
+			choice.add_item(str(p.get("name", "Giocatore")) + "  " + str(p.get("rating", 0)) + availability_tag)
+			if int(p.get("injury", 0)) > 0 or int(p.get("suspension", 0)) > 0:
+				choice.set_item_disabled(choice.item_count - 1, true)
+		if current_player_index >= 0:
+			choice.select(current_player_index)
+		choice.item_selected.connect(func(option_index: int):
 			_set_lineup_player(slot_index, option_index)
 		)
-		row.add_child(choice)
-	_label("Trascina i giocatori sul campo per scambiare le loro posizioni.")
-	_label("Media titolari: " + str(_team_rating()) + " OVR")
-	_button("Salva formazione", func(): _save_game(); _show_home())
+		row_content.add_child(choice)
 
+	var bench_header := HBoxContainer.new()
+	bench_header.add_theme_constant_override("separation", 8)
+	content.add_child(bench_header)
+	var bench_title := Label.new()
+	bench_title.text = "PANCHINA  /  CAMBI DISPONIBILI"
+	bench_title.add_theme_font_size_override("font_size", 14)
+	bench_title.add_theme_color_override("font_color", Color("#e7bd68"))
+	bench_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bench_header.add_child(bench_title)
+	var target_slot := OptionButton.new()
+	target_slot.custom_minimum_size = Vector2(185, 38)
+	for i in range(positions.size()):
+		target_slot.add_item(str(i + 1) + "  •  " + str(positions[i]))
+	target_slot.select(clampi(selected_formation_slot, 0, 10))
+	target_slot.item_selected.connect(func(index: int): selected_formation_slot = index)
+	bench_header.add_child(target_slot)
+	var bench_grid := GridContainer.new()
+	bench_grid.columns = 4
+	bench_grid.add_theme_constant_override("h_separation", 8)
+	bench_grid.add_theme_constant_override("v_separation", 8)
+	content.add_child(bench_grid)
+	var bench_count := 0
+	for player_index in range(players.size()):
+		var bench_player: Dictionary = players[player_index]
+		var player_id := int(bench_player.get("id", -1))
+		if lineup_ids.has(player_id):
+			continue
+		bench_count += 1
+		if bench_count > 8:
+			break
+		var bench_card := PanelContainer.new()
+		bench_card.custom_minimum_size = Vector2(0, 70)
+		var bench_card_style := StyleBoxFlat.new()
+		bench_card_style.bg_color = Color("#112338")
+		bench_card_style.border_color = Color("#2c465e")
+		bench_card_style.set_border_width_all(1)
+		bench_card_style.set_corner_radius_all(9)
+		bench_card_style.content_margin_left = 7
+		bench_card_style.content_margin_right = 7
+		bench_card.add_theme_stylebox_override("panel", bench_card_style)
+		bench_grid.add_child(bench_card)
+		var bench_row := HBoxContainer.new()
+		bench_card.add_child(bench_row)
+		var bench_info := VBoxContainer.new()
+		bench_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bench_row.add_child(bench_info)
+		var bench_name := Label.new()
+		bench_name.text = str(bench_player.get("name", "Giocatore"))
+		bench_name.add_theme_font_size_override("font_size", 10)
+		bench_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		bench_info.add_child(bench_name)
+		var bench_meta := Label.new()
+		bench_meta.text = str(bench_player.get("position", "")) + "  •  " + str(bench_player.get("rating", 0)) + " OVR  •  " + str(bench_player.get("fitness", 0)) + "%"
+		bench_meta.add_theme_font_size_override("font_size", 9)
+		bench_meta.add_theme_color_override("font_color", Color("#8fa7bf"))
+		bench_info.add_child(bench_meta)
+		var promote := Button.new()
+		promote.text = "↑"
+		promote.custom_minimum_size = Vector2(38, 36)
+		promote.tooltip_text = "Inserisci al posto della posizione selezionata"
+		var captured_index := player_index
+		promote.pressed.connect(func(): _set_lineup_player(selected_formation_slot, captured_index))
+		bench_row.add_child(promote)
+	if bench_count == 0:
+		_label("Nessuna riserva disponibile.", 12)
+	_label("Suggerimento: trascina un indicatore sul campo per scambiare due titolari. Usa la panchina per inserire rapidamente una riserva.", 11)
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 9)
+	content.add_child(actions)
+	var save_button := Button.new()
+	save_button.text = "SALVA FORMAZIONE"
+	save_button.custom_minimum_size = Vector2(0, 48)
+	save_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	save_button.pressed.connect(func(): _save_game(); _show_home())
+	actions.add_child(save_button)
+	var roster_button := Button.new()
+	roster_button.text = "GESTISCI ROSA"
+	roster_button.custom_minimum_size = Vector2(0, 48)
+	roster_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	roster_button.pressed.connect(_show_squad)
+	actions.add_child(roster_button)
 func _swap_lineup_slots(first_slot: int, second_slot: int) -> void:
 	if first_slot < 0 or second_slot < 0 or first_slot >= lineup_ids.size() or second_slot >= lineup_ids.size(): return
 	var temp := int(lineup_ids[first_slot])
@@ -1518,29 +1738,172 @@ func _apply_player_match(goals: int, conceded: int, substitutions: Array = []) -
 
 func _show_squad() -> void:
 	_clear_content()
-	_label("ROSA • GESTIONE CARTE",22)
-	_label("Trascina una carta sopra un'altra per scambiare i due giocatori nell'ordine della rosa. Le carte mostrano overall, ruolo, età e forma.")
-	_label("Media: "+str(_team_rating())+" • Ingaggi settimanali: €"+_money(_weekly_wages()))
-	var real_count := players.filter(func(p): return bool(p.get("real_player", false))).size()
-	_label("Dati rosa: " + str(real_count) + " giocatori reali importati • " + str(players.size() - real_count) + " generati")
-	_label("TITOLARI E PANCHINA  /  TRASCINA UNA CARTA SU UN'ALTRA PER CAMBIARE LA FORMAZIONE", 15)
-	var grid := GridContainer.new()
-	grid.columns = 5
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 10)
-	content.add_child(grid)
+	_ensure_lineup()
+	_label("SQUADRA  /  PLAYER HUB", 25)
+	_label("Gestisci ogni reparto, controlla condizione e disponibilità e costruisci la tua formazione. Seleziona una carta per aprire il profilo completo.", 14)
+
+	var starters := lineup_ids.size()
+	var injured := players.filter(func(p): return int(p.get("injury", 0)) > 0).size()
+	var suspended := players.filter(func(p): return int(p.get("suspension", 0)) > 0).size()
+	var average_fitness := 0.0
 	for p in players:
+		average_fitness += float(p.get("fitness", 100))
+	average_fitness = average_fitness / maxf(1.0, float(players.size()))
+	var summary := HBoxContainer.new()
+	summary.add_theme_constant_override("separation", 9)
+	content.add_child(summary)
+	var metrics := [
+		["TITOLARI", str(starters), Color("#72d8e8")],
+		["ROSA", str(players.size()), Color("#e7bd68")],
+		["FORMA MEDIA", str(int(round(average_fitness))) + "%", Color("#8dd6a9")],
+		["INDISPONIBILI", str(injured + suspended), Color("#ff9a9f")]
+	]
+	for metric in metrics:
+		var tile := PanelContainer.new()
+		tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var tile_style := StyleBoxFlat.new()
+		tile_style.bg_color = Color("#101f31")
+		tile_style.border_color = Color("#2b425b")
+		tile_style.set_border_width_all(1)
+		tile_style.set_corner_radius_all(11)
+		tile_style.content_margin_left = 11
+		tile_style.content_margin_right = 11
+		tile_style.content_margin_top = 8
+		tile_style.content_margin_bottom = 8
+		tile.add_theme_stylebox_override("panel", tile_style)
+		summary.add_child(tile)
+		var tile_box := VBoxContainer.new()
+		tile.add_child(tile_box)
+		var value := Label.new()
+		value.text = metric[1]
+		value.add_theme_font_size_override("font_size", 23)
+		value.add_theme_color_override("font_color", metric[2])
+		tile_box.add_child(value)
+		var caption := Label.new()
+		caption.text = metric[0]
+		caption.add_theme_font_size_override("font_size", 9)
+		caption.add_theme_color_override("font_color", Color("#8ea5bd"))
+		tile_box.add_child(caption)
+
+	var finance := HBoxContainer.new()
+	finance.add_theme_constant_override("separation", 14)
+	content.add_child(finance)
+	var rating_label := Label.new()
+	rating_label.text = "FORZA XI  " + str(_team_rating()) + " OVR"
+	rating_label.add_theme_color_override("font_color", Color("#e7bd68"))
+	rating_label.add_theme_font_size_override("font_size", 14)
+	finance.add_child(rating_label)
+	var wage_label := Label.new()
+	wage_label.text = "MONTE INGAGGI  €" + _money(_weekly_wages()) + " / SETT."
+	wage_label.add_theme_color_override("font_color", Color("#a9bfd4"))
+	wage_label.add_theme_font_size_override("font_size", 12)
+	finance.add_child(wage_label)
+
+	var filters := HBoxContainer.new()
+	filters.add_theme_constant_override("separation", 8)
+	content.add_child(filters)
+	var search := LineEdit.new()
+	search.placeholder_text = "Cerca per nome o club..."
+	search.text = squad_search_text
+	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	search.custom_minimum_size = Vector2(170, 42)
+	search.text_changed.connect(func(value: String): squad_search_text = value)
+	filters.add_child(search)
+	var filter_choice := OptionButton.new()
+	for option in ["Tutti", "Titolari", "Panchina", "Portieri", "Difensori", "Centrocampisti", "Attaccanti", "Infortunati"]:
+		filter_choice.add_item(option)
+	filter_choice.select(maxi(0, ["Tutti", "Titolari", "Panchina", "Portieri", "Difensori", "Centrocampisti", "Attaccanti", "Infortunati"].find(squad_filter)))
+	filter_choice.item_selected.connect(func(index: int):
+		squad_filter = filter_choice.get_item_text(index)
+		_show_squad()
+	)
+	filters.add_child(filter_choice)
+	var sort_choice := OptionButton.new()
+	for option in ["Valutazione", "Forma", "Età", "Nome", "Ingaggio"]:
+		sort_choice.add_item(option)
+	sort_choice.select(maxi(0, ["Valutazione", "Forma", "Età", "Nome", "Ingaggio"].find(squad_sort)))
+	sort_choice.item_selected.connect(func(index: int):
+		squad_sort = sort_choice.get_item_text(index)
+		_show_squad()
+	)
+	filters.add_child(sort_choice)
+	var search_button := Button.new()
+	search_button.text = "CERCA"
+	search_button.custom_minimum_size = Vector2(82, 42)
+	search_button.pressed.connect(_show_squad)
+	filters.add_child(search_button)
+
+	var real_count := players.filter(func(p): return bool(p.get("real_player", false))).size()
+	var source_note := Label.new()
+	source_note.text = str(real_count) + " profili importati  •  " + str(players.size() - real_count) + " profili generati  •  Rosa ordinata per reparto e disponibilità"
+	source_note.add_theme_font_size_override("font_size", 11)
+	source_note.add_theme_color_override("font_color", Color("#8298af"))
+	content.add_child(source_note)
+
+	var visible_players: Array = []
+	for p in players:
+		var pos := str(p.get("position", ""))
+		var is_starter := lineup_ids.has(int(p.get("id", -1)))
+		var matches := true
+		match squad_filter:
+			"Titolari": matches = is_starter
+			"Panchina": matches = not is_starter
+			"Portieri": matches = pos == "POR"
+			"Difensori": matches = pos in ["DC", "TD", "TS"]
+			"Centrocampisti": matches = pos in ["CDC", "CC", "COC"]
+			"Attaccanti": matches = pos in ["AD", "AS", "ATT"]
+			"Infortunati": matches = int(p.get("injury", 0)) > 0 or int(p.get("suspension", 0)) > 0
+		var query := squad_search_text.strip_edges().to_lower()
+		if query != "":
+			matches = matches and (str(p.get("name", "")).to_lower().contains(query) or str(p.get("club", "")).to_lower().contains(query))
+		if matches:
+			visible_players.append(p)
+	visible_players.sort_custom(func(a, b):
+		var a_starter := lineup_ids.has(int(a.get("id", -1)))
+		var b_starter := lineup_ids.has(int(b.get("id", -1)))
+		if a_starter != b_starter:
+			return a_starter
+		match squad_sort:
+			"Forma": return int(a.get("fitness", 0)) > int(b.get("fitness", 0))
+			"Età": return int(a.get("age", 99)) < int(b.get("age", 99))
+			"Nome": return str(a.get("name", "")) < str(b.get("name", ""))
+			"Ingaggio": return int(a.get("wage", 0)) > int(b.get("wage", 0))
+			_: return int(a.get("rating", 0)) > int(b.get("rating", 0))
+	)
+	var section := HBoxContainer.new()
+	section.add_theme_constant_override("separation", 8)
+	content.add_child(section)
+	var section_title := Label.new()
+	section_title.text = "GIOCATORI  /  " + str(visible_players.size()) + " RISULTATI"
+	section_title.add_theme_font_size_override("font_size", 15)
+	section_title.add_theme_color_override("font_color", Color("#e7bd68"))
+	section_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	section.add_child(section_title)
+	var formation_button := Button.new()
+	formation_button.text = "APRI FORMAZIONE  →"
+	formation_button.custom_minimum_size = Vector2(190, 40)
+	formation_button.pressed.connect(_show_formation)
+	section.add_child(formation_button)
+
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 11)
+	grid.add_theme_constant_override("v_separation", 11)
+	content.add_child(grid)
+	for p in visible_players:
 		var card = preload("res://scripts/player_card.gd").new()
 		var card_data: Dictionary = p.duplicate(true)
 		card_data["starting_xi"] = lineup_ids.has(int(p.get("id", -1)))
+		card_data["captain"] = int(p.get("id", -1)) == captain_id
 		card.setup(card_data)
 		card.swap_requested.connect(_swap_players)
 		card.sell_requested.connect(_sell_player)
 		card.renew_requested.connect(_renew_player_contract)
 		card.detail_requested.connect(_show_player_detail)
 		grid.add_child(card)
-
+	if visible_players.is_empty():
+		_label("Nessun giocatore corrisponde ai filtri. Modifica la ricerca o seleziona Tutti.", 14)
 func _show_player_detail(player_id: int) -> void:
 	var player: Dictionary = {}
 	for candidate in players:
