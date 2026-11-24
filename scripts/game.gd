@@ -1084,8 +1084,13 @@ func _club_power(team: String) -> int:
 		match str(tactics.get("costruzione", "Mista")):
 			"Corta": power += 1
 			"Diretta": power += 1
+		match str(tactics.get("linea", "Media")):
+			"Alta": power += 1
+			"Bassa": power -= 1
 		return clampi(power, 35, 99)
-	return randi_range(58,78)
+	# Keep AI strength stable for the whole fixture: the same club must not
+	# receive a different random rating every time the simulator asks for it.
+	return 58 + absi(hash(str(team) + "|" + str(season))) % 21
 
 func _team_rating() -> int:
 	if players.is_empty():
@@ -1260,13 +1265,31 @@ func _apply_player_match(goals: int, conceded: int, substitutions: Array = []) -
 			p["fitness"] = maxi(50, int(p.get("fitness", 100)) - randi_range(3, 6))
 		else:
 			p["fitness"] = mini(100, int(p.get("fitness", 100)) + 3)
-	for goal_index in range(goals):
-		if scorers.size() > 0:
-			var scorer: Dictionary = scorers.pick_random()
+	var scored_ids: Array = []
+	var goal_events: Array = match_report.get("events", [])
+	for event in goal_events:
+		if str(event.get("type", "")) != "goal" or str(event.get("team", "")) != club_name:
+			continue
+		var scorer_id := int(event.get("scorer_id", -1))
+		var scorer: Dictionary = {}
+		for candidate in players:
+			if int(candidate.get("id", -2)) == scorer_id:
+				scorer = candidate
+				break
+		if scorer.is_empty() and scorers.size() > 0:
+			scorer = scorers.pick_random()
+		if not scorer.is_empty():
 			scorer["goals"] = int(scorer.get("goals", 0)) + 1
-			if randf() < 0.72 and not fit_players.is_empty():
-				var assister: Dictionary = fit_players.pick_random()
-				if int(assister.get("id", -1)) != int(scorer.get("id", -2)) and lineup_ids.has(int(assister.get("id", -1))):
+			scorer["last_rating"] = snappedf(minf(9.9, float(scorer.get("last_rating", 6.5)) + 0.35), 0.1)
+			scored_ids.append(int(scorer.get("id", -1)))
+			if randf() < 0.72:
+				var assist_candidates: Array = []
+				for candidate in fit_players:
+					var candidate_id := int(candidate.get("id", -1))
+					if played_ids.has(candidate_id) and candidate_id != scorer_id:
+						assist_candidates.append(candidate)
+				if not assist_candidates.is_empty():
+					var assister: Dictionary = assist_candidates.pick_random()
 					assister["assists"] = int(assister.get("assists", 0)) + 1
 	for p in players:
 		if goals > conceded:
@@ -1395,15 +1418,20 @@ func _swap_players(source_id: int, target_id: int) -> void:
 	_show_squad()
 
 func _sell_player(player_id: int) -> void:
+	if players.size() <= 11:
+		status_label.text = "Devi mantenere almeno 11 calciatori in rosa."
+		return
 	for i in range(players.size()):
-		if int(players[i].id) == player_id:
+		if int(players[i].get("id", -1)) == player_id:
 			var p: Dictionary = players[i]
-			cash += int(p.value*0.8)
-			wage_budget += int(p.wage)
+			cash += int(int(p.get("value", 0)) * 0.8)
+			wage_budget += int(p.get("wage", 0))
 			players.remove_at(i)
-			break
-	_save_game()
-	_show_squad()
+			lineup_ids.erase(player_id)
+			_ensure_lineup()
+			_save_game()
+			_show_squad()
+			return
 
 func _show_market() -> void:
 	_clear_content()
@@ -1532,6 +1560,7 @@ func _advance_scouting_reports() -> void:
 			if remaining == 0:
 				prospect["scouting_status"] = "Report completo"
 				prospect["scouting_report"] = true
+				prospect["scouting_completed_day"] = day
 
 func _show_observed_players() -> void:
 	_clear_content()
@@ -1591,9 +1620,12 @@ func _show_observed_players() -> void:
 		if status == "In osservazione":
 			status_line.text = "IN OSSERVAZIONE  •  " + str(prospect.get("scouting_days", 1)) + " turni al rapporto"
 			status_line.add_theme_color_override("font_color", Color("#e5bd69"))
-		else:
+		elif status == "Report completo":
 			status_line.text = "REPORT COMPLETO  •  POT " + str(prospect.get("potential", prospect.get("rating", 50))) + "  •  Valore €" + _money(int(prospect.get("value", 0)))
 			status_line.add_theme_color_override("font_color", Color("#83d6a5"))
+		else:
+			status_line.text = status.to_upper() + "  •  Profilo archiviato"
+			status_line.add_theme_color_override("font_color", Color("#9eafc1"))
 		info.add_child(status_line)
 		var actions := VBoxContainer.new()
 		row.add_child(actions)
@@ -1701,7 +1733,7 @@ func _submit_offer() -> void:
 	if players.size() >= 30:
 		_label("Rosa completa: vendi o svincola un giocatore prima di acquistare.")
 		return
-	if fee > cash or wage > wage_budget:
+	if fee < 0 or wage < 0 or fee > cash or wage > wage_budget:
 		_label("Offerta rifiutata: fondi o budget ingaggi insufficienti.")
 		return
 	var value_ratio := float(fee) / maxf(1.0, float(p.get("value", 1)))
@@ -1721,11 +1753,17 @@ func _submit_offer() -> void:
 	p.morale = 80
 	p.fitness = 100
 	p.injury = 0
-	players.append(p.duplicate(true))
+	var signed_player: Dictionary = p.duplicate(true)
+	players.append(signed_player)
 	cash -= fee
 	wage_budget -= wage
 	market.remove_at(selected_market_player)
 	selected_market_player = -1
+	_ensure_lineup()
+	for prospect in observed_players:
+		if int(prospect.get("id", -1)) == int(signed_player.get("id", -2)):
+			prospect["scouting_status"] = "Ingaggiato"
+			prospect["scouting_report"] = true
 	_save_game()
 	_show_market()
 	_label("TRASFERIMENTO COMPLETATO: "+p.name+" è un nuovo giocatore!")
@@ -1743,7 +1781,7 @@ func _submit_loan_offer() -> void:
 		_label("Il club proprietario ha rifiutato il prestito.")
 		return
 	var loanee: Dictionary = source.duplicate(true)
-	loanee["id"] = randi()
+	loanee["id"] = _unique_player_id()
 	loanee["loan"] = true
 	loanee["parent_club"] = str(source.get("club", "Club proprietario"))
 	loanee["loan_fee"] = loan_fee
@@ -1757,7 +1795,10 @@ func _submit_loan_offer() -> void:
 	market.remove_at(selected_market_player)
 	selected_market_player = -1
 	_ensure_lineup()
-	_save_game()
+	for prospect in observed_players:
+		if int(prospect.get("id", -1)) == int(loanee.get("id", -2)) or str(prospect.get("name", "")) == str(loanee.get("name", "")):
+			prospect["scouting_status"] = "In prestito al tuo club"
+		_save_game()
 	_show_market()
 	_label("Prestito completato: " + str(loanee.get("name", "Giocatore")) + " arriva per una stagione.")
 
@@ -2091,6 +2132,12 @@ func _new_season() -> void:
 	season += 1
 	day = 0
 	var expired_contracts: Array = []
+	for youth_index in range(youth_players.size() - 1, -1, -1):
+		var youth: Dictionary = youth_players[youth_index]
+		youth["age"] = int(youth.get("age", 16)) + 1
+		youth["rating"] = mini(int(youth.get("potential", 80)), int(youth.get("rating", 45)) + randi_range(0, 2))
+		if int(youth.get("age", 16)) >= 20:
+			youth_players.remove_at(youth_index)
 	for i in range(players.size() - 1, -1, -1):
 		var p: Dictionary = players[i]
 		if bool(p.get("loan", false)):
@@ -2103,6 +2150,12 @@ func _new_season() -> void:
 		p["injury"] = 0
 		p["suspension"] = 0
 		p["yellow_season"] = 0
+		p["goals"] = 0
+		p["assists"] = 0
+		p["apps"] = 0
+		p["yellow"] = 0
+		p["red"] = 0
+		p["last_rating"] = 0.0
 		if int(p.get("contract", 0)) == 0:
 			expired_contracts.append(str(p.get("name", "Giocatore")))
 			wage_budget += int(p.get("wage", 0))
@@ -2148,11 +2201,11 @@ func _add_option(caption: String, options: Array, key: String) -> void:
 
 
 func _generate_youth_intake() -> void:
-	youth_players.clear()
 	var academy_level := int(staff.get("academy", 0))
-	for i in range(4 + academy_level):
+	var intake_size := mini(4 + academy_level, maxi(0, 16 - youth_players.size()))
+	for i in range(intake_size):
 		var prospect: Dictionary = _make_player(i)
-		prospect["id"] = randi()
+		prospect["id"] = _unique_player_id()
 		prospect["age"] = randi_range(16, 18)
 		prospect["rating"] = randi_range(42 + academy_level * 2, 58 + academy_level * 2)
 		prospect["potential"] = randi_range(72 + academy_level, 88 + academy_level * 2)
@@ -2185,6 +2238,7 @@ func _sign_youth(index: int) -> void:
 		_label("Rosa completa: vendi o svincola un giocatore prima di promuovere un giovane.")
 		return
 	var prospect: Dictionary = youth_players[index].duplicate(true)
+	prospect["id"] = _unique_player_id()
 	prospect.erase("youth")
 	prospect["apps"] = 0
 	prospect["goals"] = 0
@@ -2232,9 +2286,7 @@ func _upgrade_staff(role: String) -> void:
 	cash -= cost
 	staff[role] = level + 1
 	if role == "academy":
-		var current_prospects: Array = youth_players.duplicate(true)
 		_generate_youth_intake()
-		youth_players.append_array(current_prospects)
 	_save_game()
 	if selected_tab == "Giovanili":
 		_show_youth()
@@ -2270,7 +2322,7 @@ func _money(value: int) -> String:
 	return str(value)
 
 func _save_game() -> void:
-	var data := {"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"manager_name":manager_name,"career_difficulty":career_difficulty,"starting_budget_mode":starting_budget_mode,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"market":market,"observed_players":observed_players,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
+	var data := {"save_version":2,"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"manager_name":manager_name,"career_difficulty":career_difficulty,"starting_budget_mode":starting_budget_mode,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"market":market,"observed_players":observed_players,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
 	var file := FileAccess.open(SAVE_PATH,FileAccess.WRITE)
 	if file:
 		file.store_string(JSON.stringify(data))
@@ -2295,6 +2347,23 @@ func _repair_saved_player_ids() -> void:
 			used[player_id] = true
 	if lineup_changed:
 		lineup_ids.clear()
+
+func _repair_observed_player_links() -> void:
+	# Observed entries are snapshots of a market player. Keep their identity
+	# synchronized after save migration repairs duplicate IDs or a transfer.
+	for prospect in observed_players:
+		var prospect_name := str(prospect.get("name", ""))
+		var prospect_club := str(prospect.get("club", ""))
+		for candidate in market:
+			if str(candidate.get("name", "")) == prospect_name and str(candidate.get("club", "")) == prospect_club:
+				prospect["id"] = int(candidate.get("id", prospect.get("id", -1)))
+				prospect["portrait_seed"] = int(candidate.get("portrait_seed", prospect.get("portrait_seed", 1)))
+				break
+		for candidate in players:
+			if str(candidate.get("name", "")) == prospect_name and str(candidate.get("club", "")) == prospect_club:
+				if str(prospect.get("scouting_status", "")) in ["Ingaggiato", "In prestito al tuo club"]:
+					prospect["id"] = int(candidate.get("id", prospect.get("id", -1)))
+				break
 
 func _load_game() -> void:
 	if not FileAccess.file_exists(SAVE_PATH):
@@ -2326,6 +2395,8 @@ func _load_game() -> void:
 	fixtures = d.get("fixtures",[])
 	market = d.get("market",[])
 	observed_players = d.get("observed_players", [])
+	if typeof(observed_players) != TYPE_ARRAY:
+		observed_players = []
 	cup_round = int(d.get("cup_round",0))
 	cup_teams = d.get("cup_teams",[])
 	cup_winner = str(d.get("cup_winner",""))
@@ -2349,6 +2420,7 @@ func _load_game() -> void:
 	european_competitions = d.get("european_competitions", {})
 	qualified_european_comp = str(d.get("qualified_european_comp", ""))
 	_ensure_lineup()
+	_repair_observed_player_links()
 	# Migrazione automatica delle vecchie carriere con calendario fisso da 16 club.
 	if league.size() == 16 or fixtures.size() == 30:
 		day = 0
@@ -2383,24 +2455,25 @@ func _simulate_substitutions() -> Array:
 
 func _create_match_report(home: String, away: String, home_goals: int, away_goals: int, substitutions: Array) -> Dictionary:
 	var events: Array = []
-	var home_attackers: Array = []
-	var away_attackers: Array = []
+	var played_ids: Array = lineup_ids.duplicate()
+	for sub in substitutions:
+		played_ids.erase(int(sub.get("out_id", -1)))
+		played_ids.append(int(sub.get("in_id", -1)))
+	var user_attackers: Array = []
 	for p in players:
-		if ["ATT","AD","AS","COC"].has(str(p.get("position", ""))):
-			home_attackers.append(p)
+		if played_ids.has(int(p.get("id", -1))) and ["ATT", "AD", "AS", "COC"].has(str(p.get("position", ""))):
+			user_attackers.append(p)
 	for i in range(home_goals + away_goals):
 		var minute := randi_range(2, 90)
 		var is_home := i < home_goals
-		var scorer_name := "Attaccante"
-		var candidates: Array = []
-		var user_scores_at_home := home == club_name
-		if is_home == user_scores_at_home: candidates = home_attackers
-		if candidates.size() > 0:
-			scorer_name = str(candidates.pick_random().get("name", "Attaccante"))
-		else:
-			scorer_name = FIRST.pick_random() + " " + LAST.pick_random()
 		var team_name := home if is_home else away
-		events.append({"minute":minute,"text":"GOL! " + team_name + " — " + scorer_name + " (" + str(minute) + "′)","type":"goal"})
+		var scorer_name := FIRST.pick_random() + " " + LAST.pick_random()
+		var scorer_id := -1
+		if team_name == club_name and not user_attackers.is_empty():
+			var scorer: Dictionary = user_attackers.pick_random()
+			scorer_name = str(scorer.get("name", "Attaccante"))
+			scorer_id = int(scorer.get("id", -1))
+		events.append({"minute":minute,"text":"GOL! " + team_name + " — " + scorer_name + " (" + str(minute) + "′)","type":"goal","team":team_name,"scorer_id":scorer_id})
 	for minute in range(1, 91):
 		var commentary: String = ["Azione manovrata a centrocampo","La squadra prova ad allargare il gioco","Pressione sul portatore di palla","Possesso palla e ricerca degli spazi","Lancio in profondità, difesa attenta","Duello aereo nella zona centrale","La squadra guadagna metri","Cross dalla fascia, respinta della difesa"].pick_random()
 		events.append({"minute":minute,"text":str(minute) + "′ — " + commentary,"type":"commentary"})
@@ -2413,10 +2486,6 @@ func _create_match_report(home: String, away: String, home_goals: int, away_goal
 	events.append({"minute":45,"text":"45′ — Fine primo tempo","type":"break"})
 	events.append({"minute":90,"text":"90′ — Triplice fischio","type":"end"})
 	events.sort_custom(func(a, b): return int(a.get("minute", 0)) < int(b.get("minute", 0)))
-	var played_ids: Array = lineup_ids.duplicate()
-	for sub in substitutions:
-		played_ids.erase(int(sub.get("out_id", -1)))
-		played_ids.append(int(sub.get("in_id", -1)))
 	return {"home":home,"away":away,"home_goals":home_goals,"away_goals":away_goals,"events":events,"substitutions":substitutions,"played_ids":played_ids,"date_label":"Giornata " + str(day + 1)}
 
 func _show_match_report() -> void:
@@ -2446,15 +2515,12 @@ func _show_match_report() -> void:
 	content.add_child(visual)
 	_label("AZIONI E CRONACA", 19)
 	var events: Array = match_report.get("events", [])
-	var important := 0
 	for event in events:
-		if str(event.get("type", "")) in ["goal", "sub", "card", "break", "end", "start"]:
-			var event_type := str(event.get("type", ""))
-			var prefix := "⚽" if event_type == "goal" else "🔁" if event_type == "sub" else "🟨" if event_type == "card" else "⏱"
-			_label(prefix + "  " + str(event.get("minute", 0)) + "′  " + str(event.get("text", "")))
-			important += 1
-	if important == 0:
-		_label("Partita equilibrata, poche occasioni decisive.")
+		var event_type := str(event.get("type", "commentary"))
+		var prefix := "⚽" if event_type == "goal" else "🔁" if event_type == "sub" else "🟨" if event_type == "card" else "⏱" if event_type in ["break", "end", "start"] else "•"
+		_label(prefix + "  " + str(event.get("minute", 0)) + "′  " + str(event.get("text", "")))
+	if events.is_empty():
+		_label("Partita equilibrata, cronaca non disponibile.")
 	_label("VALUTAZIONI GIOCATORI", 19)
 	var rated: Array = []
 	for p in players:
