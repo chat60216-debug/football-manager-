@@ -1584,11 +1584,17 @@ func _show_formation() -> void:
 	target_slot.select(clampi(selected_formation_slot, 0, 10))
 	target_slot.item_selected.connect(func(index: int): selected_formation_slot = index)
 	bench_header.add_child(target_slot)
+	var bench_scroll := ScrollContainer.new()
+	bench_scroll.custom_minimum_size = Vector2(0, 220)
+	bench_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bench_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	content.add_child(bench_scroll)
 	var bench_grid := GridContainer.new()
-	bench_grid.columns = 4
-	bench_grid.add_theme_constant_override("h_separation", 8)
-	bench_grid.add_theme_constant_override("v_separation", 8)
-	content.add_child(bench_grid)
+	bench_grid.columns = 3
+	bench_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bench_grid.add_theme_constant_override("h_separation", 9)
+	bench_grid.add_theme_constant_override("v_separation", 9)
+	bench_scroll.add_child(bench_grid)
 	var bench_count := 0
 	for player_index in range(players.size()):
 		var bench_player: Dictionary = players[player_index]
@@ -1596,10 +1602,8 @@ func _show_formation() -> void:
 		if lineup_ids.has(player_id):
 			continue
 		bench_count += 1
-		if bench_count > 8:
-			break
 		var bench_card := PanelContainer.new()
-		bench_card.custom_minimum_size = Vector2(0, 70)
+		bench_card.custom_minimum_size = Vector2(0, 78)
 		var bench_card_style := StyleBoxFlat.new()
 		bench_card_style.bg_color = Color("#112338")
 		bench_card_style.border_color = Color("#2c465e")
@@ -1886,7 +1890,7 @@ func _show_squad() -> void:
 	section.add_child(formation_button)
 
 	var grid := GridContainer.new()
-	grid.columns = 4
+	grid.columns = 3
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation", 11)
 	grid.add_theme_constant_override("v_separation", 11)
