@@ -1490,7 +1490,7 @@ func _create_match_report(home: String, away: String, home_goals: int, away_goal
 		var team_name := home if is_home else away
 		events.append({"minute":minute,"text":"GOL! " + team_name + " — " + scorer_name + " (" + str(minute) + "′)","type":"goal"})
 	for minute in range(1, 91):
-		var commentary := ["Azione manovrata a centrocampo","La squadra prova ad allargare il gioco","Pressione sul portatore di palla","Possesso palla e ricerca degli spazi","Lancio in profondità, difesa attenta","Duello aereo nella zona centrale","La squadra guadagna metri","Cross dalla fascia, respinta della difesa"].pick_random()
+		var commentary: String = ["Azione manovrata a centrocampo","La squadra prova ad allargare il gioco","Pressione sul portatore di palla","Possesso palla e ricerca degli spazi","Lancio in profondità, difesa attenta","Duello aereo nella zona centrale","La squadra guadagna metri","Cross dalla fascia, respinta della difesa"].pick_random()
 		events.append({"minute":minute,"text":str(minute) + "′ — " + commentary,"type":"commentary"})
 	for sub in substitutions:
 		events.append({"minute":int(sub.get("minute", 60)),"text":"Sostituzione " + club_name + ": " + str(sub.get("in_name", "")) + " per " + str(sub.get("out_name", "")),"type":"sub"})
@@ -1643,7 +1643,7 @@ func _build_european_competitions() -> void:
 			if not teams.has(next_team) and next_team != club_name:
 				teams.append(next_team)
 		while teams.size() < 8:
-			var filler := "Continental FC " + str(teams.size() + 1) + " " + name.replace("UEFA ", "")
+			var filler: String = "Continental FC " + str(teams.size() + 1) + " " + name.replace("UEFA ", "")
 			if not teams.has(filler): teams.append(filler)
 		european_competitions[name] = _make_european_competition(name, teams)
 
