@@ -5,6 +5,7 @@ Source: OpenFootballBase-Data (Wikipedia CC BY-SA 4.0 + Wikidata CC0).
 Only the selected 2026/27 men's squads for the game's supported leagues are exported.
 """
 import json
+from datetime import date, datetime, timezone
 from pathlib import Path
 import duckdb
 
@@ -29,16 +30,21 @@ def clean(v):
 def main():
     squad_files = list((DATA / "squad").glob("2026-27*.parquet"))
     club_files = list((DATA / "club_season").glob("2026-27*.parquet"))
-    if not squad_files or not club_files:
-        raise SystemExit("OpenFootballBase 2026/27 parquet partitions not found")
+    birth_files = list((DATA / "birth").glob("*.parquet"))
+    if not squad_files or not club_files or not birth_files:
+        raise SystemExit("OpenFootballBase 2026/27 squad, club or birth parquet partitions not found")
     con = duckdb.connect()
     squad_path = str(DATA / "squad" / "2026-27*.parquet").replace("\\", "/")
     clubs_path = str(DATA / "club_season" / "2026-27*.parquet").replace("\\", "/")
+    birth_path = str(DATA / "birth" / "*.parquet").replace("\\", "/")
     codes = ",".join("'" + c + "'" for c in COMPETITIONS)
     rows = con.execute(f"""
         SELECT s.competition, s.club, s.player, s.player_qid,
-               s.shirt_number, s.position, s.nationality
+               s.shirt_number, s.position, s.nationality,
+               b.birth_date, b.precision
         FROM read_parquet('{squad_path}') s
+        LEFT JOIN read_parquet('{birth_path}') b
+          ON s.player_qid = b.player_qid AND b.precision = 11
         WHERE s.season = '{SEASON}' AND s.competition IN ({codes})
         ORDER BY s.competition, s.club, s.shirt_number NULLS LAST, s.player
     """).fetchall()
@@ -61,15 +67,21 @@ def main():
     for code, club in club_rows:
         if code in output["competitions"]:
             output["competitions"][code]["clubs"].setdefault(club, {"players": []})
-    for code, club, player, qid, shirt, pos, nationality in rows:
+    season_cutoff = date(int(SEASON.split("/")[0]), 8, 1)
+    for code, club, player, qid, shirt, pos, nationality, birth_date, precision in rows:
         if code not in output["competitions"] or not clean(player):
             continue
+        age = None
+        if birth_date and precision == 11:
+            born = date.fromisoformat(str(birth_date)[:10])
+            age = season_cutoff.year - born.year - ((season_cutoff.month, season_cutoff.day) < (born.month, born.day))
         entry = output["competitions"][code]["clubs"].setdefault(club, {"players": []})
         entry["players"].append({
             "name": clean(player), "qid": clean(qid),
             "number": int(shirt) if shirt is not None else 0,
             "position": clean(pos) or "",
-            "nationality": clean(nationality) or ""
+            "nationality": clean(nationality) or "",
+            "age": age
         })
     for comp in output["competitions"].values():
         comp["club_count"] = len(comp["clubs"])
