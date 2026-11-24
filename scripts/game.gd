@@ -474,21 +474,35 @@ func _set_lineup_player(slot_index: int, player_index: int) -> void:
 	_save_game()
 
 func _apply_player_match(goals: int, conceded: int) -> void:
-	var fit_players: Array = players.filter(func(p): return int(p.injury)==0)
+	_ensure_lineup()
+	var scorers: Array = []
+	var fit_players: Array = players.filter(func(p): return int(p.get("injury", 0)) == 0)
 	for p in fit_players:
-		p.apps += 1
-		p.fitness = maxi(35,int(p.fitness)-randi_range(5,11))
-		if randf() < 0.012:
-			p.injury = randi_range(1,5)
-		if ["ATT","AD","AS"].has(p.position) and goals > 0 and randf() < 0.22:
-			p.goals += 1
-		if randf() < 0.015:
-			p.yellow += 1
+		var is_starter := lineup_ids.has(int(p.get("id", -1)))
+		if is_starter:
+			p["apps"] = int(p.get("apps", 0)) + 1
+			p["fitness"] = maxi(35, int(p.get("fitness", 100)) - randi_range(6, 12))
+			if randf() < 0.014:
+				p["injury"] = randi_range(1, 5)
+			if randf() < 0.025:
+				p["yellow"] = int(p.get("yellow", 0)) + 1
+			if ["ATT", "AD", "AS", "COC"].has(str(p.get("position", ""))):
+				scorers.append(p)
+		else:
+			p["fitness"] = mini(100, int(p.get("fitness", 100)) + 3)
+	for goal_index in range(goals):
+		if scorers.size() > 0:
+			var scorer: Dictionary = scorers.pick_random()
+			scorer["goals"] = int(scorer.get("goals", 0)) + 1
+			if randf() < 0.72 and not fit_players.is_empty():
+				var assister: Dictionary = fit_players.pick_random()
+				if int(assister.get("id", -1)) != int(scorer.get("id", -2)):
+					assister["assists"] = int(assister.get("assists", 0)) + 1
 	for p in players:
 		if goals > conceded:
-			p.morale = mini(100,int(p.morale)+3)
+			p["morale"] = mini(100, int(p.get("morale", 70)) + 3)
 		elif goals < conceded:
-			p.morale = maxi(20,int(p.morale)-3)
+			p["morale"] = maxi(20, int(p.get("morale", 70)) - 3)
 
 func _show_squad() -> void:
 	_clear_content()
