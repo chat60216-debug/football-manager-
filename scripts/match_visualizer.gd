@@ -16,6 +16,13 @@ const WHITE := Color("#f3fff7")
 const CYAN := Color("#67e6f4")
 const RED := Color("#ff6578")
 
+func _draw_ellipse(center: Vector2, radii: Vector2, color: Color) -> void:
+	var points := PackedVector2Array()
+	for i in range(24):
+		var angle := TAU * float(i) / 24.0
+		points.append(center + Vector2(cos(angle) * radii.x, sin(angle) * radii.y))
+	draw_colored_polygon(points, color)
+
 func setup(data: Dictionary) -> void:
 	report = data.duplicate(true)
 	custom_minimum_size = Vector2(0, 390)
