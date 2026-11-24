@@ -876,7 +876,8 @@ func _show_home() -> void:
 		action_button.text = action[0]
 		action_button.custom_minimum_size = Vector2(0, 44)
 		action_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		action_button.pressed.connect(action[1])
+		var action_callback: Callable = action[1]
+		action_button.pressed.connect(action_callback)
 		quick_row.add_child(action_button)
 	var table_card := PanelContainer.new()
 	right.add_child(table_card)
@@ -891,7 +892,7 @@ func _show_home() -> void:
 	for i in range(mini(5, standings.size())):
 		var row := Label.new()
 		var entry: Dictionary = standings[i]
-		row.text = "%d   %-24s   %d pt" % [i + 1, str(entry.get("name", "")), int(entry.get("pts", 0))]
+		row.text = str(i + 1) + "   " + str(entry.get("name", "")) + "   " + str(entry.get("pts", 0)) + " pt"
 		row.add_theme_font_size_override("font_size", 13)
 		if str(entry.get("name", "")) == club_name:
 			row.add_theme_color_override("font_color", Color("#e5bd69"))
