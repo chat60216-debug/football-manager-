@@ -52,9 +52,12 @@ func _run_smoke_test() -> void:
 			if club_names.size() != expected_count:
 				_fail("incorrect 2026/27 club count for " + game.country + " " + game.division + ": " + str(club_names.size()))
 				return
-			if club_names.size() != club_names.duplicate().size():
-				_fail("duplicate clubs in " + game.country + " " + game.division)
-				return
+			var unique_names: Array = []
+			for club in club_names:
+				if unique_names.has(club):
+					_fail("duplicate clubs in " + game.country + " " + game.division)
+					return
+				unique_names.append(club)
 	game.country = original_country
 	game.division = original_division
 	if game.european_competitions.size() != 3:
