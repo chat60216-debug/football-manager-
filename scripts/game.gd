@@ -831,9 +831,9 @@ func _show_market() -> void:
 	_label("MERCATO TRASFERIMENTI",22)
 	_label("Cassa: €"+_money(cash)+" • Budget ingaggi: €"+_money(wage_budget))
 	var filter := OptionButton.new()
-	for option in ["Tutti","Giovani U21","Occasioni sotto €2M","Top player OVR 75+"]:
+	for option in ["Tutti","Calciatori reali","Giovani U21","Occasioni sotto €2M","Top player OVR 75+"]:
 		filter.add_item(option)
-	filter.select(["Tutti","Giovani U21","Occasioni sotto €2M","Top player OVR 75+"].find(market_filter))
+	filter.select(["Tutti","Calciatori reali","Giovani U21","Occasioni sotto €2M","Top player OVR 75+"].find(market_filter))
 	filter.item_selected.connect(func(i):
 		market_filter = filter.get_item_text(i)
 		_show_market()
@@ -845,6 +845,7 @@ func _show_market() -> void:
 		var age := int(p.get("age", 30))
 		var value := int(p.get("value", 0))
 		var rating := int(p.get("rating", 0))
+		if market_filter == "Calciatori reali" and not bool(p.get("real_player", false)): continue
 		if market_filter == "Giovani U21" and age > 21: continue
 		if market_filter == "Occasioni sotto €2M" and value >= 2000000: continue
 		if market_filter == "Top player OVR 75+" and rating < 75: continue
