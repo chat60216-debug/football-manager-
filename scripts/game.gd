@@ -652,7 +652,7 @@ func _ensure_lineup() -> void:
 	for p in ordered:
 		if lineup_ids.size() >= 11:
 			break
-		if int(p.get("injury", 0)) == 0 and int(p.get("suspension", 0)) == 0:
+		if int(p.get("injury", 0)) == 0 and int(p.get("suspension", 0)) == 0 and not lineup_ids.has(int(p.get("id", -1))):
 			lineup_ids.append(int(p.get("id", -1)))
 	if lineup_ids.size() < 11:
 		for p in ordered:
