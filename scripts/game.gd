@@ -619,7 +619,7 @@ func _show_home() -> void:
 		var fixture := _find_fixture(club_name)
 		if not fixture.is_empty():
 			var opponent := str(fixture.away if fixture.home == club_name else fixture.home)
-			var home_side := fixture.home == club_name
+			var home_side: bool = str(fixture.get("home", "")) == club_name
 			var fixture_panel := PanelContainer.new()
 			content.add_child(fixture_panel)
 			var fixture_box := VBoxContainer.new()
