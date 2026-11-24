@@ -41,6 +41,9 @@ func _run_smoke_test() -> void:
 	if game.players.size() < 11:
 		_fail("career squad has fewer than 11 players")
 		return
+	if int(game.captain_id) < 0 or not game.lineup_ids.has(int(game.captain_id)):
+		_fail("new career did not assign an available captain from the starting lineup")
+		return
 	# Training regression: development is gradual, weekly-limited and persistent.
 	var training_candidate: Dictionary = {}
 	for squad_player in game.players:
@@ -293,6 +296,15 @@ func _run_smoke_test() -> void:
 		return
 	game._show_formation()
 	await process_frame
+	var captain_selector_found := false
+	for formation_child in game.content.get_children():
+		if formation_child is HBoxContainer:
+			for row_child in formation_child.get_children():
+				if row_child is OptionButton and row_child.item_count == 11:
+					captain_selector_found = true
+	if not captain_selector_found:
+		_fail("formation screen did not display a captain selector")
+		return
 	var pitch_node: Control = null
 	for child in game.content.get_children():
 		if child.get_script() == load("res://scripts/tactical_pitch.gd"):
