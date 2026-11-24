@@ -88,6 +88,15 @@ func _run_smoke_test() -> void:
 	if real_count < 11:
 		_fail("real 2026/27 player squad was not imported")
 		return
+	game._show_squad()
+	await process_frame
+	var rendered_cards := 0
+	for content_child in game.content.get_children():
+		if content_child is GridContainer:
+			rendered_cards = content_child.get_child_count()
+	if rendered_cards != game.players.size():
+		_fail("squad screen did not render a complete player card for every squad member")
+		return
 	if game.pyramid_state.size() != 3:
 		_fail("Italian league pyramid did not initialize")
 		return
