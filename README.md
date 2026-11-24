@@ -19,7 +19,7 @@ Football management career game for Android, built with Godot 4.4.1.
 - Dedicated weekly training centre with five training plans, a per-matchweek session limit, gradual player development toward potential, fitness/morale effects and staff/facility bonuses.
 - Interactive tactical pitch: drag a player marker to another position to swap the two starters; formation and lineup are saved.
 - Tactical instructions influence team strength.
-- Transfer market mixes imported real players from the bundled database with generated prospects; filters cover real players, U21 players, bargains and high-rated players. Offers use fee, wage, role and club prestige.
+- Expanded transfer market with up to 48 available players at base scout level, a larger imported-player pool, search, filters and sorting by rating, age, value or name. Offers use fee, wage, role and club prestige.
 - Loans, contract renewals, contract expiry and weekly wage accounting.
 - Youth academy, generated prospects, player promotion and staff upgrades.
 - Club management: sponsor contracts, board objectives, confidence and upgradeable training, stadium, medical and academy facilities.
