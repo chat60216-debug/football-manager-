@@ -1,39 +1,51 @@
 # FOOTBALL CAREER: DYNASTY
 
-Mobile-first 2D football management prototype built with Godot 4.4.1.
+Football management career game for Android, built with Godot 4.4.1.
 
-## Current implemented systems
-- New club creation and country/division selection.
-- Embedded club-name lists for selected 2026/27 divisions; some lower divisions still use partial/generated opponent lists.
-- Custom club added to the selected league rather than replacing an existing club.
-- Dynamic double round-robin fixture generator with bye rounds for odd participant counts.
-- Matchday simulation, league table, player fitness/morale/injuries, club finances.
-- Procedurally generated fictional squad and transfer market.
-- Transfer offers with fee, wage, contract duration and promised role; player sales.
-- Tactical settings that modify match strength, national cup prototype and local save/load.
-- User-club promotion/relegation based on final league position, with season history and financial rewards or penalties.
-- Contract expiry at season end and weekly wage payments deducted from club cash.
-- Youth academy with generated prospects, promotion to the first team and academy upgrades.
-- Staff upgrades for coaching, scouting, fitness/medical support and youth development; coach and scout levels affect gameplay.
-- Player statistics for goals, assists, appearances, cards, injuries and suspensions.
-- Lineup validation prevents duplicate starters and replaces unavailable players when possible.
-- Squad card UI: each player is shown as a card with overall rating, position, age and fitness. Drag a card onto another card to swap their order in the squad; card includes a sale action. The order is saved locally.
+## Implemented gameplay
 
-## Not yet complete
-This repository is not yet a full commercial-grade football manager. The following systems still need implementation and testing:
-- Complete and season-accurate club databases for every selectable division (including all Serie C groups, LaLiga 2 and Ligue 3).
-- Real-world player database, licensed portraits, badges and accurate player attributes. Current players are fictional and generated.
-- A proper formation/pitch lineup with position-aware drag-and-drop between starting XI and bench (the current card swap changes squad order only).
-- AI club promotion/relegation, playoffs and cross-division movement for every team (currently only the user club moves automatically).
-- Complete national cup formats and UEFA Champions League, Europa League and Conference League seasons with qualification, fixtures and prize money.
-- More complete transfer AI, staff contracts, sponsorship, board objectives and a complete financial model.
-- Detailed match engine with minute-by-minute commentary, match ratings, substitutions and multi-season balance testing.
-- Automated gameplay regression tests and installation testing on physical devices.
+- New career setup with country, division and real club selection where data is available.
+- Season 2026/27 club lists for the selectable leagues. Serie C uses the current three 20-team groups; the selected club determines its group.
+- Embedded real squad database generated from OpenFootballBase: 2026/27 squads for 10 competitions (Premier League, Championship, La Liga, Segunda, Serie A, Serie B, Bundesliga, 2. Bundesliga, Ligue 1 and Ligue 2).
+- Current imported dataset: 198 clubs and 5,732 player-squad entries. Real player names, positions and nationalities are imported; age, rating, potential, wages and market value are simulated by the game.
+- Where the upstream dataset does not publish complete squads (Serie C, English League One/Two and French Ligue 3), the game uses verified club lists and generated players, visibly labelled as generated.
+- Every player card has a unique generated avatar. These are stylized avatars, not photographs or likenesses of real footballers.
+- Full season fixture generation, league standings, matchday simulation and season history.
+- User-club and AI-club promotion/relegation within the selected country's pyramid, with generic end-of-season promotion playoffs.
+- Playable national cup prototype and playable UEFA Champions League, Europa League and Conference League simulations. UEFA competitions use two groups of four, semifinals and a final; qualification is based on domestic results or the cup.
+- Match report with a 1–90 minute commentary timeline, goals, cards, substitutions and player ratings. Substitution timing can be set to early, balanced or late.
+- Interactive tactical pitch: drag a player marker to another position to swap the two starters; formation and lineup are saved.
+- Tactical instructions influence team strength.
+- Transfer market filters for U21 players, bargains and high-rated players; offers are evaluated probabilistically using fee, wage, role and club prestige.
+- Loans, contract renewals, contract expiry and weekly wage accounting.
+- Youth academy, generated prospects, player promotion and staff upgrades.
+- Club management: sponsor contracts, board objectives, confidence and upgradeable training, stadium, medical and academy facilities.
+- Player statistics, fitness, morale, injuries, suspensions and local save/load.
 
-## Run
-Open this folder in Godot 4.4.1 and press Play.
+## Real data coverage and attribution
+
+The bundled roster file is built by `scripts/import_openfootballbase.py` from the latest OpenFootballBase-Data release:
+- https://github.com/florentfougeres/OpenFootballBase-Data
+- Squads are based on Wikipedia (CC BY-SA 4.0) and Wikidata (CC0). The upstream release includes source page and revision metadata.
+- The roster refresh workflow runs weekly and can also be started manually from GitHub Actions.
+- The upstream dataset does not provide complete squads for every selectable third-tier competition. The game never labels generated players as real players.
+- Player portraits are generated illustrations; no player photos or club marks are bundled.
+
+## Current limitations / next development
+
+- The match engine is a career simulation, not a live-data or physically simulated football engine. Minute commentary is generated from match events.
+- Promotion/playoff rules are generic and not yet an exact reproduction of every country's regulations.
+- Full real-player rosters are currently available for the 10 imported top/second-tier competitions only. Lower-tier players remain generated until a suitable open and verifiable roster source is available.
+- Real-player ages, attributes, contracts, salaries, market values, injuries and historical statistics are not included in the imported source and are simulated.
+- UEFA competitions are game simulations with simplified qualification and tournament formats, not a full UEFA coefficient/registration model.
+- Generated player portraits are not realistic photos.
+
+## Run locally
+
+Open the repository folder in Godot 4.4.1 and press Play.
 
 ## Android
-GitHub Actions is configured to export a debug APK. A successful workflow run and device test are required before an APK can be called verified.
 
-Package: com.chat60216.footballdynasty
+GitHub Actions exports a debug APK. A successful workflow run verifies the export, but installation and gameplay still need to be tested on a physical Android device.
+
+Package: `com.chat60216.footballdynasty`
