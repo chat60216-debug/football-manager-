@@ -41,6 +41,21 @@ func _run_smoke_test() -> void:
 	if game.players.size() < 11:
 		_fail("career squad has fewer than 11 players")
 		return
+	var ai_power_first := game._club_power("Regression FC")
+	var ai_power_second := game._club_power("Regression FC")
+	if ai_power_first != ai_power_second:
+		_fail("AI club strength changed between calculations in the same season")
+		return
+	var season_probe := {"goals": 7, "assists": 4, "apps": 18, "yellow": 3, "yellow_season": 3, "red": 1, "last_rating": 8.4}
+	game._reset_player_season_stats(season_probe)
+	if int(season_probe.get("goals", -1)) != 0 or int(season_probe.get("apps", -1)) != 0 or int(season_probe.get("yellow", -1)) != 0 or float(season_probe.get("last_rating", -1.0)) != 0.0:
+		_fail("season statistics were not reset correctly")
+		return
+	game.youth_players = [{"id": 987654321, "name": "Youth Regression", "age": 16, "rating": 50, "potential": 80}]
+	game._advance_youth_season()
+	if game.youth_players.size() != 1 or int(game.youth_players[0].get("age", 0)) != 17:
+		_fail("youth prospects did not age and persist into the next season")
+		return
 	var real_count: int = game.players.filter(func(p): return bool(p.get("real_player", false))).size()
 	if real_count < 11:
 		_fail("real 2026/27 player squad was not imported")
@@ -141,6 +156,25 @@ func _run_smoke_test() -> void:
 		return
 	if game.match_report.get("events", []).size() < 90:
 		_fail("match timeline is not minute-by-minute")
+		return
+	var user_goal_events := 0
+	for event in game.match_report.get("events", []):
+		if str(event.get("type", "")) == "goal" and str(event.get("team", "")) == game.club_name:
+			user_goal_events += 1
+			var scorer_id := int(event.get("scorer_id", -1))
+			if scorer_id != -1 and game.players.filter(func(p): return int(p.get("id", -2)) == scorer_id).is_empty():
+				_fail("match commentary referenced a scorer outside the active squad")
+				return
+	var squad_goal_total := 0
+	for player in game.players:
+		squad_goal_total += int(player.get("goals", 0))
+	if squad_goal_total != user_goal_events:
+		_fail("player goal statistics did not match the match commentary")
+		return
+	game._show_match_report()
+	await process_frame
+	if game.content.get_child_count() < 90:
+		_fail("match report UI did not display the full minute-by-minute timeline")
 		return
 	for _round in range(3):
 		game._play_european_round("UEFA Champions League")
