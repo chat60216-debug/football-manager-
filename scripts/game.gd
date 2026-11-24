@@ -1005,10 +1005,13 @@ func _play_matchday() -> void:
 			var user_conceded := ag if home == club_name else hg
 			_apply_player_match(user_goals, user_conceded, substitutions)
 			_update_board_after_match(user_goals, user_conceded)
-			cash += 80000 + hg * 7000 + int(facilities.get("stadium", 1)) * 6000
+			var matchday_income := 35000
+			if home == club_name:
+				matchday_income = 80000 + int(facilities.get("stadium", 1)) * 6000
+			cash += matchday_income + user_goals * 7000
 			cash += int(sponsor_contract.get("weekly", 0))
 			cash -= _weekly_wages()
-			if hg > ag:
+			if user_goals > user_conceded:
 				cash += 45000
 	if not club_played:
 		cash += int(sponsor_contract.get("weekly", 0))
