@@ -182,8 +182,8 @@ func _run_smoke_test() -> void:
 		_fail("UEFA competitions did not initialize")
 		return
 	var real_market_count: int = game.market.filter(func(p): return bool(p.get("real_player", false))).size()
-	if real_market_count == 0:
-		_fail("transfer market did not include real imported players")
+	if game.market.size() < 40 or real_market_count < 30:
+		_fail("expanded transfer market did not provide at least 40 players and 30 imported real-player entries")
 		return
 	var market_sample: Dictionary = game.market[0]
 	var market_name_query := str(market_sample.get("name", "")).substr(0, 3).to_lower()
