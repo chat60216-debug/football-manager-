@@ -1164,9 +1164,6 @@ func _formation_positions() -> Array:
 			return ["POR","TD","DC","DC","TS","CDC","CC","CC","AD","AS","ATT"]
 
 func _ensure_lineup() -> void:
-	var valid_ids: Array = []
-	for p in players:
-		valid_ids.append(int(p.get("id", -1)))
 	var unique_valid := lineup_ids.size() == 11
 	var seen: Array = []
 	if unique_valid:
@@ -1185,24 +1182,35 @@ func _ensure_lineup() -> void:
 		return
 	lineup_ids.clear()
 	var ordered: Array = players.duplicate()
-	ordered.sort_custom(func(a, b):
-		var a_ok := int(a.get("injury", 0)) == 0 and int(a.get("suspension", 0)) == 0
-		var b_ok := int(b.get("injury", 0)) == 0 and int(b.get("suspension", 0)) == 0
-		if a_ok != b_ok:
-			return a_ok
-		return int(a.get("rating", 0)) > int(b.get("rating", 0))
-	)
+	var slots := _formation_positions()
+	# Fill each tactical role with the best available fit instead of simply
+	# selecting the eleven highest-rated players regardless of position.
+	for slot_index in range(mini(11, slots.size())):
+		var best_id := -1
+		var best_score := -100000.0
+		for p in ordered:
+			var candidate_id := int(p.get("id", -1))
+			if lineup_ids.has(candidate_id):
+				continue
+			var score := float(p.get("rating", 0))
+			score -= float(_position_fit_penalty(str(p.get("position", "")), str(slots[slot_index])))
+			score += float(p.get("fitness", 100)) * 0.025
+			score += float(p.get("morale", 70)) * 0.01
+			if int(p.get("injury", 0)) > 0 or int(p.get("suspension", 0)) > 0:
+				score -= 100.0
+			if score > best_score:
+				best_score = score
+				best_id = candidate_id
+		if best_id >= 0:
+			lineup_ids.append(best_id)
+	# If the squad has fewer than eleven available players, complete the lineup
+	# with unavailable players rather than leaving tactical slots unassigned.
 	for p in ordered:
 		if lineup_ids.size() >= 11:
 			break
-		if int(p.get("injury", 0)) == 0 and int(p.get("suspension", 0)) == 0 and not lineup_ids.has(int(p.get("id", -1))):
-			lineup_ids.append(int(p.get("id", -1)))
-	if lineup_ids.size() < 11:
-		for p in ordered:
-			if lineup_ids.size() >= 11:
-				break
-			if not lineup_ids.has(int(p.get("id", -1))):
-				lineup_ids.append(int(p.get("id", -1)))
+		var candidate_id := int(p.get("id", -1))
+		if not lineup_ids.has(candidate_id):
+			lineup_ids.append(candidate_id)
 
 func _show_formation() -> void:
 	_clear_content()
@@ -1215,6 +1223,8 @@ func _show_formation() -> void:
 	modules.select(["4-3-3","4-2-3-1","4-4-2","3-5-2"].find(formation))
 	modules.item_selected.connect(func(i):
 		formation = modules.get_item_text(i)
+		lineup_ids.clear()
+		_ensure_lineup()
 		_show_formation()
 	)
 	content.add_child(modules)
