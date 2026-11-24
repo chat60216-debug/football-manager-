@@ -71,6 +71,7 @@ var setup_name: LineEdit
 var setup_country: OptionButton
 var setup_division: OptionButton
 var market_fee: SpinBox
+var market_bonus: SpinBox
 var market_wage: SpinBox
 var market_years: SpinBox
 var market_role: OptionButton
@@ -1522,15 +1523,18 @@ func _show_squad() -> void:
 	_label("Media: "+str(_team_rating())+" • Ingaggi settimanali: €"+_money(_weekly_wages()))
 	var real_count := players.filter(func(p): return bool(p.get("real_player", false))).size()
 	_label("Dati rosa: " + str(real_count) + " giocatori reali importati • " + str(players.size() - real_count) + " generati")
+	_label("TITOLARI E PANCHINA  /  TRASCINA UNA CARTA SU UN'ALTRA PER CAMBIARE LA FORMAZIONE", 15)
 	var grid := GridContainer.new()
-	grid.columns = 3
+	grid.columns = 5
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", 8)
-	grid.add_theme_constant_override("v_separation", 8)
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
 	content.add_child(grid)
 	for p in players:
 		var card = preload("res://scripts/player_card.gd").new()
-		card.setup(p)
+		var card_data: Dictionary = p.duplicate(true)
+		card_data["starting_xi"] = lineup_ids.has(int(p.get("id", -1)))
+		card.setup(card_data)
 		card.swap_requested.connect(_swap_players)
 		card.sell_requested.connect(_sell_player)
 		card.renew_requested.connect(_renew_player_contract)
@@ -1632,9 +1636,25 @@ func _swap_players(source_id: int, target_id: int) -> void:
 				target_index = i
 	if source_index < 0 or target_index < 0:
 		return
-	var temp: Dictionary = players[source_index]
-	players[source_index] = players[target_index]
-	players[target_index] = temp
+	var source_is_starter := lineup_ids.has(source_id)
+	var target_is_starter := lineup_ids.has(target_id)
+	if source_is_starter and target_is_starter:
+		var source_slot := lineup_ids.find(source_id)
+		var target_slot := lineup_ids.find(target_id)
+		lineup_ids[source_slot] = target_id
+		lineup_ids[target_slot] = source_id
+	elif source_is_starter and not target_is_starter:
+		var starter_slot := lineup_ids.find(source_id)
+		lineup_ids[starter_slot] = target_id
+	elif not source_is_starter and target_is_starter:
+		var starter_slot := lineup_ids.find(target_id)
+		lineup_ids[starter_slot] = source_id
+	else:
+		var temp: Dictionary = players[source_index]
+		players[source_index] = players[target_index]
+		players[target_index] = temp
+	_ensure_lineup()
+	_ensure_captain()
 	_save_game()
 	_show_squad()
 
@@ -1985,6 +2005,13 @@ func _negotiate(index: int) -> void:
 	market_fee.step = 25000
 	market_fee.value = p.value
 	content.add_child(market_fee)
+	_label("Bonus alla firma (€)")
+	market_bonus = SpinBox.new()
+	market_bonus.min_value = 0
+	market_bonus.max_value = 10000000
+	market_bonus.step = 10000
+	market_bonus.value = 0
+	content.add_child(market_bonus)
 	_label("FASE 2  •  ACCORDO CON IL CALCIATORE", 17)
 	_label("Ingaggio settimanale (€)")
 	market_wage = SpinBox.new()
@@ -2016,18 +2043,20 @@ func _submit_offer() -> void:
 		return
 	var p: Dictionary = market[selected_market_player]
 	var fee := int(market_fee.value)
+	var bonus := int(market_bonus.value)
 	var wage := int(market_wage.value)
 	if players.size() >= 30:
 		_label("Rosa completa: vendi o svincola un giocatore prima di acquistare.")
 		return
-	if fee < 0 or wage < 0 or fee > cash or wage > wage_budget:
-		_label("Offerta rifiutata: fondi o budget ingaggi insufficienti.")
+	if fee < 0 or bonus < 0 or wage < 0 or fee + bonus > cash or wage > wage_budget:
+		_label("Offerta rifiutata: fondi o budget ingaggi insufficienti, bonus incluso.")
 		return
 	var value_ratio := float(fee) / maxf(1.0, float(p.get("value", 1)))
 	var wage_ratio := float(wage) / maxf(1.0, float(p.get("wage", 1)))
+	var bonus_ratio := float(bonus) / maxf(1.0, float(p.get("value", 1)))
 	var role_bonus := 0.12 if ROLES[market_role.selected] in ["Cruciale","Importante"] else 0.04
 	var prestige_bonus := clampf(float(_team_rating() - int(p.get("rating", 60))) / 100.0, -0.12, 0.12)
-	var acceptance := clampf(0.18 + (value_ratio - 0.65) * 1.1 + (wage_ratio - 0.75) * 0.55 + role_bonus + prestige_bonus, 0.04, 0.97)
+	var acceptance := clampf(0.18 + (value_ratio - 0.65) * 1.1 + (wage_ratio - 0.75) * 0.55 + minf(0.18, bonus_ratio * 0.35) + role_bonus + prestige_bonus, 0.04, 0.97)
 	if randf() > acceptance:
 		var counter_fee := int(float(p.get("value", 0)) * 1.08)
 		var counter_wage := int(float(p.get("wage", 0)) * 1.08)
@@ -2036,6 +2065,7 @@ func _submit_offer() -> void:
 	p.contract = int(market_years.value)
 	p.role = ROLES[market_role.selected]
 	p.wage = wage
+	p["signing_bonus"] = bonus
 	p.value = maxi(int(p.value),fee)
 	p.morale = 80
 	p.fitness = 100
@@ -2044,7 +2074,7 @@ func _submit_offer() -> void:
 	p["club"] = club_name
 	var signed_player: Dictionary = p.duplicate(true)
 	players.append(signed_player)
-	cash -= fee
+	cash -= fee + bonus
 	wage_budget -= wage
 	market.remove_at(selected_market_player)
 	selected_market_player = -1
