@@ -1113,7 +1113,7 @@ func _position_fit_penalty(player_position: String, slot_position: String) -> in
 		return 0
 	# A goalkeeper must stay in goal; using an outfield player there is a major penalty.
 	if slot_position == "POR" or player_position == "POR":
-		return 40
+		return 55
 	if slot_position in ["TD", "TS"] and player_position in ["TD", "TS", "DC"]:
 		return 2
 	if slot_position == "DC" and player_position in ["TD", "TS", "CDC"]:
