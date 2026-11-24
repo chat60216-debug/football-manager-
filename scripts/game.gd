@@ -31,6 +31,7 @@ var training_focus := "Equilibrio"
 var youth_players: Array = []
 var staff := {"coach":0,"scout":0,"physio":0,"academy":0}
 var season_history: Array = []
+var last_season_message := ""
 var selected_tab := "Home"
 var root: VBoxContainer
 var content: VBoxContainer
@@ -165,8 +166,8 @@ func _new_career() -> void:
 		players.append(_make_player(i))
 	_ensure_lineup()
 	_generate_league()
-	_generate_market()
 	staff = {"coach":0,"scout":0,"physio":0,"academy":0}
+	_generate_market()
 	youth_players.clear()
 	season_history.clear()
 	_generate_youth_intake()
@@ -290,6 +291,8 @@ func _show_tab(tab: String) -> void:
 func _show_home() -> void:
 	_clear_content()
 	_label(club_name+" • "+division+" "+str(season),22)
+	if last_season_message != "":
+		_label(last_season_message, 17)
 	_label("Turno "+str(day+1)+" / "+str(fixtures.size())+" • "+str(league.size())+" squadre")
 	_label("Cassa: €"+_money(cash)+" • Budget ingaggi settimanale: €"+_money(wage_budget))
 	_label("Rosa: "+str(players.size())+" calciatori • Media: "+str(_team_rating()))
@@ -858,33 +861,37 @@ func _finish_season_and_move_club() -> void:
 	if position == 0 and current_index < divisions.size() - 1:
 		division = str(divisions[current_index + 1])
 		cash += 1500000
-		european_status = "Promosso in " + division
+		last_season_message = "Promozione conquistata: " + division
 	elif position >= sorted.size() - 3 and current_index > 0:
 		division = str(divisions[current_index - 1])
 		cash = maxi(0, cash - 300000)
-		european_status = "Retrocesso in " + division
+		last_season_message = "Retrocessione: nuova divisione " + division
 	else:
-		european_status = "Confermato in " + division
+		last_season_message = "Stagione conclusa: permanenza in " + division
 
 func _new_season() -> void:
 	_finish_season_and_move_club()
 	season += 1
 	day = 0
+	var expired_contracts: Array = []
 	for i in range(players.size() - 1, -1, -1):
-		if bool(players[i].get("loan", false)):
-			wage_budget += int(players[i].get("wage", 0))
+		var p: Dictionary = players[i]
+		if bool(p.get("loan", false)):
+			wage_budget += int(p.get("wage", 0))
 			players.remove_at(i)
-	for p in players:
-		p.age = int(p.get("age", 20)) + 1
-		p.contract = maxi(0,int(p.contract)-1)
-		p.fitness = 100
-		p.injury = 0
-		p.suspension = 0
-		p.yellow_season = 0
-		if int(p.contract) == 0:
-			p.morale = maxi(20,int(p.morale)-12)
-		elif int(p.age) < 30 and int(p.rating) < int(p.potential):
-			p.rating = mini(int(p.potential),int(p.rating)+randi_range(0,2))
+			continue
+		p["age"] = int(p.get("age", 20)) + 1
+		p["contract"] = maxi(0, int(p.get("contract", 0)) - 1)
+		p["fitness"] = 100
+		p["injury"] = 0
+		p["suspension"] = 0
+		p["yellow_season"] = 0
+		if int(p.get("contract", 0)) == 0:
+			expired_contracts.append(str(p.get("name", "Giocatore")))
+			wage_budget += int(p.get("wage", 0))
+			players.remove_at(i)
+		elif int(p.get("age", 20)) < 30 and int(p.get("rating", 50)) < int(p.get("potential", 90)):
+			p["rating"] = mini(int(p.get("potential", 90)), int(p.get("rating", 50)) + randi_range(0, 2))
 	_generate_league()
 	_generate_youth_intake()
 	cup_round = 0
@@ -896,6 +903,8 @@ func _new_season() -> void:
 	_ensure_lineup()
 	_save_game()
 	_show_home()
+	if expired_contracts.size() > 0:
+		status_label.text = "Contratti scaduti: " + ", ".join(expired_contracts) + ". Ingaggi liberati."
 
 func _show_tactics() -> void:
 	_clear_content()
@@ -1039,7 +1048,7 @@ func _money(value: int) -> String:
 	return str(value)
 
 func _save_game() -> void:
-	var data := {"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"market":market,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus}
+	var data := {"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"market":market,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"last_season_message":last_season_message}
 	var file := FileAccess.open(SAVE_PATH,FileAccess.WRITE)
 	if file:
 		file.store_string(JSON.stringify(data))
@@ -1079,6 +1088,7 @@ func _load_game() -> void:
 	formation = str(d.get("formation", "4-3-3"))
 	lineup_ids = d.get("lineup_ids", [])
 	training_focus = str(d.get("training_focus", "Equilibrio"))
+	last_season_message = str(d.get("last_season_message", ""))
 	_ensure_lineup()
 	# Migrazione automatica delle vecchie carriere con calendario fisso da 16 club.
 	if league.size() == 16 or fixtures.size() == 30:
