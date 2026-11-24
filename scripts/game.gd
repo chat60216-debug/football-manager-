@@ -80,6 +80,11 @@ var market_sort := "Valutazione"
 var market_search_text := ""
 var ui_built := false
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED:
+		if club_name != "" and not players.is_empty():
+			_save_game()
+
 func _ready() -> void:
 	randomize()
 	_load_real_roster_database()
