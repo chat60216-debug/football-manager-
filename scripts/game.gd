@@ -259,8 +259,11 @@ func _generate_league() -> void:
 
 func _generate_market() -> void:
 	market.clear()
-	for i in range(24):
+	for i in range(24 + int(staff.get("scout", 0)) * 3):
 		var p := _make_player(i)
+		if int(staff.get("scout", 0)) > 0:
+			p["rating"] = mini(88, int(p["rating"]) + randi_range(0, int(staff.get("scout", 0)) * 2))
+			p["potential"] = mini(94, int(p["potential"]) + int(staff.get("scout", 0)))
 		p["value"] = int(p["rating"] * p["rating"] * 1450)
 		p["wage"] = randi_range(700,5000)
 		p["club"] = CLUBS.pick_random()
@@ -405,7 +408,7 @@ func _team_rating() -> int:
 		for p in players:
 			total += int(p.get("rating", 50))
 			count += 1
-	return int(round(float(total) / max(1, count)))
+	return mini(99, int(round(float(total) / max(1, count))) + int(staff.get("coach", 0)) * 2)
 
 func _formation_positions() -> Array:
 	match formation:
@@ -809,7 +812,7 @@ func _train_squad() -> void:
 		match training_focus:
 			"Tecnica":
 				if int(p.get("age", 30)) < 30:
-					p.rating = mini(int(p.get("potential", 90)), int(p.get("rating", 50)) + 1)
+					p.rating = mini(int(p.get("potential", 90)), int(p.get("rating", 50)) + 1 + int(staff.get("coach", 0)))
 			"Fisico":
 				p.fitness = mini(100, int(p.get("fitness", 70)) + 12)
 			"Tattica":
