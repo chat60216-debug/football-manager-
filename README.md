@@ -1,34 +1,33 @@
 # FOOTBALL CAREER: DYNASTY
 
-Mobile-first 2D football management game built with Godot 4.4.1.
+Mobile-first 2D football management prototype built with Godot 4.4.1.
 
-## Current playable foundation
-- Create a custom club and choose one of five countries and a division.
-- Add the created club to the selected league; it does not replace an existing club.
-- Generate a double round-robin calendar from the participant count.
-- Even participant count: 2 × (N - 1) rounds. Odd participant count: 2 × N rounds, with one bye per club in each half-season.
-- League table, match simulation, squad fitness, morale, injuries and finances.
-- Procedural player squad, transfers, negotiations, sales, tactical choices and local save/load.
-- Basic national cup knockout mode.
+## Current implemented systems
+- New club creation and country/division selection.
+- Embedded club-name lists for selected 2026/27 divisions; some lower divisions still use partial/generated opponent lists.
+- Custom club added to the selected league rather than replacing an existing club.
+- Dynamic double round-robin fixture generator with bye rounds for odd participant counts.
+- Matchday simulation, league table, player fitness/morale/injuries, club finances.
+- Procedurally generated fictional squad and transfer market.
+- Transfer offers with fee, wage, contract duration and promised role; player sales.
+- Tactical settings, national cup prototype and local save/load.
+- Squad card UI: each player is shown as a card with overall rating, position, age and fitness. Drag a card onto another card to swap their order in the squad; card includes a sale action. The order is saved locally.
 
-## 2026/27 club data currently included
-Verified participant lists are embedded for:
-- Italy: Serie A and Serie B.
-- England: Premier League, Championship, League One and League Two.
-- Spain: LaLiga.
-- France: Ligue 1 and Ligue 2.
-- Germany: Bundesliga and 2. Bundesliga.
-
-Some selectable lower divisions still use a partial club pool completed with generated placeholder opponents. In particular, Serie C is represented as a single 20-club group in this prototype; the real competition has multiple groups and needs its full group-specific database and promotion/playoff rules before it can be considered accurate. LaLiga 2 and Ligue 3 also need their complete season-specific club lists.
-
-All player names and player attributes are currently fictional/procedurally generated. Real player data, crests and photos are not included.
+## Not yet complete
+This repository is not yet a full commercial-grade football manager. The following systems still need implementation and testing:
+- Complete and season-accurate club databases for every selectable division (including all Serie C groups, LaLiga 2 and Ligue 3).
+- Real-world player database, licensed portraits, badges and accurate player attributes. Current players are fictional and generated.
+- A proper formation/pitch lineup with position-aware drag-and-drop between starting XI and bench (the current card swap changes squad order only).
+- Full league pyramid with promotion/relegation, playoffs and cross-division club movement.
+- Complete national cup formats and UEFA Champions League, Europa League and Conference League seasons with qualification, fixtures and prize money.
+- More complete transfer AI, loans, renewals, scouting, staff, facilities, sponsorship, board objectives and finances.
+- Match engine, match commentary, player statistics, suspensions and multi-season balance testing.
+- Automated Godot validation, Android export verification and installation testing on physical devices.
 
 ## Run
 Open this folder in Godot 4.4.1 and press Play.
 
 ## Android
-GitHub Actions is configured to export a debug APK as an artifact.
+GitHub Actions is configured to export a debug APK. A successful workflow run and device test are required before an APK can be called verified.
 
 Package: com.chat60216.footballdynasty
-
-The Android build must complete successfully in GitHub Actions before an APK can be considered verified.
