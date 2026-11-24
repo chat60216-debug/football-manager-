@@ -409,7 +409,18 @@ func _country_changed(index: int) -> void:
 	_update_setup_real_clubs()
 
 func _new_career() -> void:
-	club_name = selected_club_name if selected_club_name != "" else "Dynasty FC"
+	if selected_club_name == "":
+		if is_instance_valid(setup_real_club) and setup_real_club.selected > 0:
+			selected_club_name = setup_real_club.get_item_text(setup_real_club.selected)
+		elif is_instance_valid(setup_name) and setup_name.text.strip_edges() != "":
+			selected_club_name = setup_name.text.strip_edges()
+		else:
+			selected_club_name = "Dynasty FC"
+		if is_instance_valid(setup_country):
+			country = COUNTRIES[setup_country.selected]
+		if is_instance_valid(setup_division):
+			division = setup_division.get_item_text(setup_division.selected)
+	club_name = selected_club_name
 	manager_name = setup_manager_name.text.strip_edges() if is_instance_valid(setup_manager_name) else "Manager"
 	if manager_name == "":
 		manager_name = "Manager"
