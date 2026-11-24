@@ -1614,6 +1614,9 @@ func _sell_player(player_id: int) -> void:
 	for i in range(players.size()):
 		if int(players[i].get("id", -1)) == player_id:
 			var p: Dictionary = players[i]
+			if bool(p.get("loan", false)):
+				status_label.text = "Non puoi vendere un calciatore in prestito: il cartellino appartiene al club proprietario."
+				return
 			cash += int(int(p.get("value", 0)) * 0.8)
 			wage_budget += int(p.get("wage", 0))
 			players.remove_at(i)
