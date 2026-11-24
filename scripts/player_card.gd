@@ -106,7 +106,8 @@ func setup(data: Dictionary) -> void:
 	profile.pressed.connect(func(): detail_requested.emit(int(player.get("id", -1))))
 	box.add_child(profile)
 	var renew := Button.new()
-	renew.text = "Rinnova contratto"
+	renew.text = "Prestito in corso" if bool(player.get("loan", false)) else "Rinnova contratto"
+	renew.disabled = bool(player.get("loan", false))
 	renew.pressed.connect(func(): renew_requested.emit(int(player.get("id", -1))))
 	box.add_child(renew)
 	var sell := Button.new()
