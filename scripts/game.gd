@@ -493,7 +493,7 @@ func _new_career() -> void:
 	season_history.clear()
 	_generate_youth_intake()
 	cup_round = 0
-	cup_teams = [club_name] + CLUBS.slice(0, 7)
+	cup_teams = _build_national_cup_teams()
 	cup_winner = ""
 	european_status = "Non qualificato"
 	_save_game()
@@ -2076,6 +2076,15 @@ func _show_cups() -> void:
 	_button("Apri Champions League / Europa League / Conference", func(): _show_tab("UEFA"))
 	_button("Visualizza classifica",func(): _show_tab("Classifica"))
 
+func _build_national_cup_teams() -> Array:
+	var selected: Array = [club_name]
+	for candidate in CLUBS:
+		if str(candidate) != club_name and not selected.has(candidate):
+			selected.append(candidate)
+		if selected.size() >= 8:
+			break
+	return selected
+
 func _play_cup_round() -> void:
 	if cup_winner != "" or not cup_teams.has(club_name):
 		return
@@ -2517,7 +2526,7 @@ func _new_season() -> void:
 	_build_european_competitions()
 	board_objective = {"type":"points","target":35,"progress":0,"reward":600000,"label":"Raggiungi 35 punti in campionato"}
 	cup_round = 0
-	cup_teams = [club_name]+CLUBS.slice(0,7)
+	cup_teams = _build_national_cup_teams()
 	cup_winner = ""
 	european_status = "In UEFA: " + qualified_european_comp if qualified_european_comp != "" else "Non qualificato"
 	_generate_market()
