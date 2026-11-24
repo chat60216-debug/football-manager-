@@ -73,6 +73,38 @@ func _run_smoke_test() -> void:
 	if real_market_count == 0:
 		_fail("transfer market did not include real imported players")
 		return
+	# Scouting regression: assignment, duplicate protection, report countdown and persistence.
+	if game.market.is_empty():
+		_fail("transfer market is empty; scouting cannot be tested")
+		return
+	game.observed_players.clear()
+	var scouted_id := int(game.market[0].get("id", -1))
+	game._observe_market_player(0)
+	if game.observed_players.size() != 1 or int(game.observed_players[0].get("id", -2)) != scouted_id:
+		_fail("scouting assignment did not add the selected player")
+		return
+	game._observe_market_player(0)
+	if game.observed_players.size() != 1:
+		_fail("scouting allowed duplicate assignments for the same player")
+		return
+	for _tick in range(3):
+		game._advance_scouting_reports()
+	if str(game.observed_players[0].get("scouting_status", "")) != "Report completo" or not bool(game.observed_players[0].get("scouting_report", false)):
+		_fail("scouting report did not complete after its expected countdown")
+		return
+	game._save_game()
+	var save_file := FileAccess.open("user://dynasty_save.json", FileAccess.READ)
+	if save_file == null:
+		_fail("career save could not be opened after scouting")
+		return
+	var saved_data = JSON.parse_string(save_file.get_as_text())
+	if typeof(saved_data) != TYPE_DICTIONARY or saved_data.get("observed_players", []).size() != 1:
+		_fail("scouting shortlist was not persisted in the career save")
+		return
+	game._remove_observed_player(scouted_id)
+	if not game.observed_players.is_empty():
+		_fail("scouting shortlist removal did not work")
+		return
 	game._show_formation()
 	await process_frame
 	var pitch_node: Control = null
