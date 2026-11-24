@@ -120,6 +120,19 @@ func _run_smoke_test() -> void:
 	if typeof(saved_data) != TYPE_DICTIONARY or saved_data.get("observed_players", []).size() != 1:
 		_fail("scouting shortlist was not persisted in the career save")
 		return
+	if not FileAccess.file_exists("user://dynasty_save.json.bak"):
+		_fail("automatic career save backup was not created")
+		return
+	var damaged_save := FileAccess.open("user://dynasty_save.json", FileAccess.WRITE)
+	if damaged_save == null:
+		_fail("could not prepare save recovery regression test")
+		return
+	damaged_save.store_string("{ damaged json")
+	damaged_save.close()
+	game._load_game()
+	if game.players.size() < 11 or game.observed_players.size() != 1:
+		_fail("career save did not recover from the backup after JSON corruption")
+		return
 	game._remove_observed_player(scouted_id)
 	if not game.observed_players.is_empty():
 		_fail("scouting shortlist removal did not work")
