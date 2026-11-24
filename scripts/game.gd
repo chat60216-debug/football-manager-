@@ -803,6 +803,11 @@ func _show_home() -> void:
 	var hero_row := HBoxContainer.new()
 	hero_row.add_theme_constant_override("separation", 22)
 	hero.add_child(hero_row)
+	var club_crest = preload("res://scripts/club_crest.gd").new()
+	club_crest.custom_minimum_size = Vector2(112, 112)
+	club_crest.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	club_crest.setup(club_name)
+	hero_row.add_child(club_crest)
 	var hero_info := VBoxContainer.new()
 	hero_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hero_row.add_child(hero_info)
@@ -1039,6 +1044,24 @@ func _show_matchday_presentation() -> void:
 	var opponent := str(fixture.away if fixture.home == club_name else fixture.home)
 	_label("MATCHDAY  •  GIORNATA " + str(day + 1), 16)
 	_label("IL GRANDE APPUNTAMENTO", 25)
+	var match_badges := HBoxContainer.new()
+	match_badges.alignment = BoxContainer.ALIGNMENT_CENTER
+	match_badges.add_theme_constant_override("separation", 24)
+	content.add_child(match_badges)
+	for match_club in [str(fixture.home), str(fixture.away)]:
+		var badge_column := VBoxContainer.new()
+		badge_column.alignment = BoxContainer.ALIGNMENT_CENTER
+		match_badges.add_child(badge_column)
+		var match_crest = preload("res://scripts/club_crest.gd").new()
+		match_crest.custom_minimum_size = Vector2(76, 82)
+		match_crest.setup(match_club)
+		badge_column.add_child(match_crest)
+		var club_caption := Label.new()
+		club_caption.text = match_club
+		club_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		club_caption.add_theme_font_size_override("font_size", 11)
+		club_caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		badge_column.add_child(club_caption)
 	_label(fixture.home.to_upper() + "\nVS\n" + fixture.away.to_upper(), 27)
 	_label(("🔥  DERBY: LA CITTÀ SI FERMA" if _is_derby(opponent) else "90 MINUTI PER SCRIVERE LA STORIA"), 18)
 	_label("Forma squadra: " + str(_team_rating()) + " OVR  •  Modulo: " + formation)
