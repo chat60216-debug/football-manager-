@@ -397,12 +397,40 @@ func _apply_player_match(goals: int, conceded: int) -> void:
 
 func _show_squad() -> void:
 	_clear_content()
-	_label("ROSA PRIMA SQUADRA",22)
+	_label("ROSA • GESTIONE CARTE",22)
+	_label("Trascina una carta sopra un'altra per scambiare i due giocatori nell'ordine della rosa. Le carte mostrano overall, ruolo, età e forma.")
 	_label("Media: "+str(_team_rating())+" • Ingaggi settimanali: €"+_money(_weekly_wages()))
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	content.add_child(grid)
 	for p in players:
-		_label(p.name+" | "+p.position+" | "+str(p.rating)+" OVR • "+str(p.age)+" anni")
-		_label("Potenziale "+str(p.potential)+" • Morale "+str(p.morale)+" • Forma "+str(p.fitness)+" • Infortunio "+str(p.injury)+" sett. • Contratto "+str(p.contract)+" anni")
-		_button("Vendi "+p.name+" (€"+_money(int(p.value*0.8))+")",func(): _sell_player(int(p.id)))
+		var card = preload("res://scripts/player_card.gd").new()
+		card.setup(p)
+		card.swap_requested.connect(_swap_players)
+		grid.add_child(card)
+		var sell := Button.new()
+		sell.text = "Vendi • €"+_money(int(p.value*0.8))
+		sell.pressed.connect(func(): _sell_player(int(p.id)))
+		card.add_child(sell)
+
+func _swap_players(source_id: int, target_id: int) -> void:
+	var source_index := -1
+	var target_index := -1
+	for i in range(players.size()):
+		if int(players[i].get("id", -1)) == source_id:
+			source_index = i
+			elif int(players[i].get("id", -1)) == target_id:
+				target_index = i
+	if source_index < 0 or target_index < 0:
+		return
+	var temp: Dictionary = players[source_index]
+	players[source_index] = players[target_index]
+	players[target_index] = temp
+	_save_game()
+	_show_squad()
 
 func _sell_player(player_id: int) -> void:
 	for i in range(players.size()):
