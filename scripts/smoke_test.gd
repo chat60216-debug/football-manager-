@@ -80,6 +80,8 @@ func _run_smoke_test() -> void:
 	if int(game.cash) != cash_after_training or int(game.training_sessions) != 1:
 		_fail("training could be repeated multiple times in the same matchweek")
 		return
+	# Keep the later facility-upgrade regression independent from training costs.
+	game.cash = 1000000
 	var season_before_early_rollover := int(game.season)
 	game._new_season()
 	if int(game.season) != season_before_early_rollover:
