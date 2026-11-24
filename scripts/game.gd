@@ -19,6 +19,7 @@ var wage_budget := 65000
 var players: Array = []
 var league: Array = []
 var fixtures: Array = []
+var match_results: Array = []
 var market: Array = []
 var observed_players: Array = []
 var cup_round := 0
@@ -432,6 +433,7 @@ func _new_career() -> void:
 	last_season_message = ""
 	pyramid_state.clear()
 	match_report.clear()
+	match_results.clear()
 	european_competitions.clear()
 	qualified_european_comp = ""
 	market_filter = "Tutti"
@@ -1012,6 +1014,9 @@ func _play_matchday() -> void:
 		var hg := _goals_for_power(home_power,away_power)
 		var ag := _goals_for_power(away_power,home_power)
 		_update_result(home,away,hg,ag)
+		match_results.append({"season":season,"day":day,"home":home,"away":away,"hg":hg,"ag":ag,"competition":"Campionato"})
+		if match_results.size() > 1500:
+			match_results = match_results.slice(match_results.size() - 1200)
 		if home == club_name or away == club_name:
 			club_played = true
 			var substitutions := _simulate_substitutions()
@@ -1935,7 +1940,12 @@ func _show_calendar() -> void:
 		row_box.add_child(fixture_label)
 		var status := Label.new()
 		if matchday < day:
-			status.text = "GIOCATA"
+			var played_result := ""
+			for result in match_results:
+				if int(result.get("season", -1)) == season and int(result.get("day", -1)) == matchday and str(result.get("home", "")) == str(user_fixture.get("home", "")) and str(result.get("away", "")) == str(user_fixture.get("away", "")):
+					played_result = str(result.get("hg", 0)) + "–" + str(result.get("ag", 0))
+					break
+			status.text = "GIOCATA  •  " + played_result if played_result != "" else "GIOCATA"
 		elif matchday == day:
 			status.text = "PROSSIMA"
 			status.add_theme_color_override("font_color", Color("#e5bd69"))
@@ -2412,7 +2422,7 @@ func _money(value: int) -> String:
 	return str(value)
 
 func _save_game() -> void:
-	var data := {"save_version":2,"saved_at":Time.get_datetime_string_from_system(),"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"manager_name":manager_name,"career_difficulty":career_difficulty,"starting_budget_mode":starting_budget_mode,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"market":market,"observed_players":observed_players,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
+	var data := {"save_version":2,"saved_at":Time.get_datetime_string_from_system(),"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"manager_name":manager_name,"career_difficulty":career_difficulty,"starting_budget_mode":starting_budget_mode,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"match_results":match_results,"market":market,"observed_players":observed_players,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
 	# Preserve the last valid save before replacing it, so an interrupted write
 	# or damaged JSON can be recovered on the next launch.
 	var previous_file := FileAccess.open(SAVE_PATH, FileAccess.READ)
@@ -2512,6 +2522,7 @@ func _load_game() -> void:
 	season_history = d.get("season_history", [])
 	league = d.get("league",[])
 	fixtures = d.get("fixtures",[])
+	match_results = d.get("match_results", [])
 	market = d.get("market",[])
 	observed_players = d.get("observed_players", [])
 	if typeof(observed_players) != TYPE_ARRAY:
