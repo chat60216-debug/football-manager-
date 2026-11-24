@@ -50,6 +50,17 @@ jobs:
           use-dotnet: false
           include-templates: true
 
+      - name: Create temporary Android debug keystore
+        shell: bash
+        run: |
+          keytool -genkeypair -v \\
+            -keystore "$RUNNER_TEMP/android-debug.keystore" \\
+            -storepass android \\
+            -alias androiddebugkey \\
+            -keypass android \\
+            -keyalg RSA -keysize 2048 -validity 10000 \\
+            -dname "CN=Android Debug,O=Android,C=US"
+
       - name: Configure Godot Android export paths
         shell: bash
         run: |
@@ -66,9 +77,13 @@ jobs:
         run: godot --headless --editor --path . --quit
 
       - name: Export Android APK
+        env:
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: ${{ runner.temp }}/android-debug.keystore
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
         run: |
           mkdir -p build
-          godot --headless --path . --export-debug "Android" build/football-career-dynasty.apk
+          godot --headless --verbose --path . --export-debug "Android" build/football-career-dynasty.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
