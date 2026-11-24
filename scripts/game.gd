@@ -635,7 +635,6 @@ func _ensure_lineup() -> void:
 					if int(p.get("injury", 0)) > 0 or int(p.get("suspension", 0)) > 0:
 						unique_valid = false
 					break
-				break
 			if not found or seen.has(int(player_id)):
 				unique_valid = false
 			seen.append(int(player_id))
