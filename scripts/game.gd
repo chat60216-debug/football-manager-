@@ -207,8 +207,10 @@ func _league_team_names() -> Array:
 		target = 20
 	while known.size() > target:
 		known.pop_back()
+	var generated_index := 1
 	while known.size() < target:
-		var generated := "FC " + LAST[known.size() % LAST.size()]
+		var generated: String = "FC " + str(LAST[(known.size() + generated_index) % LAST.size()]) + " " + str(generated_index)
+		generated_index += 1
 		if not known.has(generated):
 			known.append(generated)
 	return known
