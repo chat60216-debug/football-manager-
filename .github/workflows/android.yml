@@ -55,6 +55,7 @@ jobs:
         run: |
           keytool -genkeypair -v \
             -keystore "$RUNNER_TEMP/android-debug.keystore" \
+            -storetype JKS \
             -storepass android \
             -alias androiddebugkey \
             -keypass android \
@@ -65,7 +66,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p "$HOME/.config/godot"
-          cat > "$HOME/.config/godot/editor_settings-4.tres" <<EOF
+          cat > "$HOME/.config/godot/editor_settings-4.4.tres" <<EOF
           [gd_resource type="EditorSettings" format=3]
 
           [resource]
