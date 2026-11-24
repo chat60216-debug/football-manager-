@@ -28,6 +28,9 @@ var tactics := {"mentalita":"Equilibrata","pressing":"Medio","costruzione":"Mist
 var formation := "4-3-3"
 var lineup_ids: Array = []
 var training_focus := "Equilibrio"
+var youth_players: Array = []
+var staff := {"coach":0,"scout":0,"physio":0,"academy":0}
+var season_history: Array = []
 var selected_tab := "Home"
 var root: VBoxContainer
 var content: VBoxContainer
@@ -76,7 +79,7 @@ func _build_shell() -> void:
 	var nav := GridContainer.new()
 	nav.columns = 3
 	root.add_child(nav)
-	for tab in ["Home","Rosa","Formazione","Mercato","Classifica","Coppe","Club"]:
+	for tab in ["Home","Rosa","Formazione","Mercato","Classifica","Coppe","Club","Giovanili","Staff","Statistiche"]:
 		var b := Button.new()
 		b.text = tab
 		b.custom_minimum_size = Vector2(0, 44)
@@ -163,6 +166,10 @@ func _new_career() -> void:
 	_ensure_lineup()
 	_generate_league()
 	_generate_market()
+	staff = {"coach":0,"scout":0,"physio":0,"academy":0}
+	youth_players.clear()
+	season_history.clear()
+	_generate_youth_intake()
 	cup_round = 0
 	cup_teams = [club_name] + CLUBS.slice(0, 7)
 	cup_winner = ""
@@ -271,6 +278,9 @@ func _show_tab(tab: String) -> void:
 		"Classifica": _show_table()
 		"Coppe": _show_cups()
 		"Club": _show_club()
+		"Giovanili": _show_youth()
+		"Staff": _show_staff()
+		"Statistiche": _show_stats()
 
 func _show_home() -> void:
 	_clear_content()
@@ -329,8 +339,10 @@ func _play_matchday() -> void:
 		for p in players:
 			p.fitness = mini(100,int(p.fitness)+5)
 	for p in players:
-		if int(p.injury) > 0:
-			p.injury = maxi(0,int(p.injury)-1)
+		if int(p.get("injury", 0)) > 0:
+			p["injury"] = maxi(0, int(p.get("injury", 0)) - 1)
+		if int(p.get("suspension", 0)) > 0:
+			p["suspension"] = maxi(0, int(p.get("suspension", 0)) - 1)
 	day += 1
 	_save_game()
 	_show_home()
@@ -410,19 +422,43 @@ func _ensure_lineup() -> void:
 	var valid_ids: Array = []
 	for p in players:
 		valid_ids.append(int(p.get("id", -1)))
-	if lineup_ids.size() == 11:
-		var all_valid := true
+	var unique_valid := lineup_ids.size() == 11
+	var seen: Array = []
+	if unique_valid:
 		for player_id in lineup_ids:
-			if not valid_ids.has(int(player_id)):
-				all_valid = false
+			var found := false
+			for p in players:
+				if int(p.get("id", -1)) == int(player_id):
+					found = true
+					if int(p.get("injury", 0)) > 0 or int(p.get("suspension", 0)) > 0:
+						unique_valid = false
+					break
 				break
-		if all_valid:
-			return
+			if not found or seen.has(int(player_id)):
+				unique_valid = false
+			seen.append(int(player_id))
+	if unique_valid:
+		return
 	lineup_ids.clear()
 	var ordered: Array = players.duplicate()
-	ordered.sort_custom(func(a, b): return int(a.get("rating", 0)) > int(b.get("rating", 0)))
-	for i in range(mini(11, ordered.size())):
-		lineup_ids.append(int(ordered[i].get("id", -1)))
+	ordered.sort_custom(func(a, b):
+		var a_ok := int(a.get("injury", 0)) == 0 and int(a.get("suspension", 0)) == 0
+		var b_ok := int(b.get("injury", 0)) == 0 and int(b.get("suspension", 0)) == 0
+		if a_ok != b_ok:
+			return a_ok
+		return int(a.get("rating", 0)) > int(b.get("rating", 0))
+	)
+	for p in ordered:
+		if lineup_ids.size() >= 11:
+			break
+		if int(p.get("injury", 0)) == 0 and int(p.get("suspension", 0)) == 0:
+			lineup_ids.append(int(p.get("id", -1)))
+	if lineup_ids.size() < 11:
+		for p in ordered:
+			if lineup_ids.size() >= 11:
+				break
+			if not lineup_ids.has(int(p.get("id", -1))):
+				lineup_ids.append(int(p.get("id", -1)))
 
 func _show_formation() -> void:
 	_clear_content()
@@ -470,7 +506,12 @@ func _set_lineup_player(slot_index: int, player_index: int) -> void:
 		return
 	while lineup_ids.size() < 11:
 		lineup_ids.append(-1)
-	lineup_ids[slot_index] = int(players[player_index].get("id", -1))
+	var chosen_id := int(players[player_index].get("id", -1))
+	var previous_slot := lineup_ids.find(chosen_id)
+	var old_id := int(lineup_ids[slot_index])
+	lineup_ids[slot_index] = chosen_id
+	if previous_slot >= 0 and previous_slot != slot_index:
+		lineup_ids[previous_slot] = old_id
 	_save_game()
 
 func _apply_player_match(goals: int, conceded: int) -> void:
@@ -482,10 +523,16 @@ func _apply_player_match(goals: int, conceded: int) -> void:
 		if is_starter:
 			p["apps"] = int(p.get("apps", 0)) + 1
 			p["fitness"] = maxi(35, int(p.get("fitness", 100)) - randi_range(6, 12))
-			if randf() < 0.014:
-				p["injury"] = randi_range(1, 5)
+			if randf() < maxf(0.004, 0.014 - float(staff.get("physio", 0)) * 0.002):
+				p["injury"] = randi_range(2, 5)
 			if randf() < 0.025:
 				p["yellow"] = int(p.get("yellow", 0)) + 1
+				p["yellow_season"] = int(p.get("yellow_season", 0)) + 1
+				if int(p["yellow_season"]) > 0 and int(p["yellow_season"]) % 5 == 0:
+					p["suspension"] = maxi(int(p.get("suspension", 0)), 2)
+			if randf() < 0.003:
+				p["red"] = int(p.get("red", 0)) + 1
+				p["suspension"] = maxi(int(p.get("suspension", 0)), 3)
 			if ["ATT", "AD", "AS", "COC"].has(str(p.get("position", ""))):
 				scorers.append(p)
 		else:
@@ -496,7 +543,7 @@ func _apply_player_match(goals: int, conceded: int) -> void:
 			scorer["goals"] = int(scorer.get("goals", 0)) + 1
 			if randf() < 0.72 and not fit_players.is_empty():
 				var assister: Dictionary = fit_players.pick_random()
-				if int(assister.get("id", -1)) != int(scorer.get("id", -2)):
+				if int(assister.get("id", -1)) != int(scorer.get("id", -2)) and lineup_ids.has(int(assister.get("id", -1))):
 					assister["assists"] = int(assister.get("assists", 0)) + 1
 	for p in players:
 		if goals > conceded:
@@ -788,11 +835,14 @@ func _new_season() -> void:
 		p.contract = maxi(0,int(p.contract)-1)
 		p.fitness = 100
 		p.injury = 0
+		p.suspension = 0
+		p.yellow_season = 0
 		if int(p.contract) == 0:
 			p.morale = maxi(20,int(p.morale)-12)
 		elif int(p.age) < 30 and int(p.rating) < int(p.potential):
 			p.rating = mini(int(p.potential),int(p.rating)+randi_range(0,2))
 	_generate_league()
+	_generate_youth_intake()
 	cup_round = 0
 	cup_teams = [club_name]+CLUBS.slice(0,7)
 	cup_winner = ""
@@ -823,6 +873,115 @@ func _add_option(caption: String, options: Array, key: String) -> void:
 	opt.item_selected.connect(func(i): tactics[key] = options[i])
 	content.add_child(opt)
 
+
+func _generate_youth_intake() -> void:
+	youth_players.clear()
+	var academy_level := int(staff.get("academy", 0))
+	for i in range(4 + academy_level):
+		var prospect: Dictionary = _make_player(i)
+		prospect["id"] = randi()
+		prospect["age"] = randi_range(16, 18)
+		prospect["rating"] = randi_range(42 + academy_level * 2, 58 + academy_level * 2)
+		prospect["potential"] = randi_range(72 + academy_level, 88 + academy_level * 2)
+		prospect["wage"] = randi_range(250, 650)
+		prospect["value"] = int(prospect["potential"] * prospect["potential"] * 500)
+		prospect["morale"] = randi_range(60, 82)
+		prospect["fitness"] = 100
+		prospect["contract"] = 3
+		prospect["youth"] = true
+		youth_players.append(prospect)
+
+func _show_youth() -> void:
+	_clear_content()
+	_label("SETTORE GIOVANILE", 22)
+	_label("Osserva i prospetti, valuta il potenziale e promuovi i talenti in prima squadra. L'accademia migliora la qualità e il numero dei nuovi arrivi.")
+	_label("Livello accademia: " + str(staff.get("academy", 0)) + " • Prospetti disponibili: " + str(youth_players.size()))
+	_button("Migliora accademia (€" + _money(300000 * (int(staff.get("academy", 0)) + 1)) + ")", func(): _upgrade_staff("academy"))
+	for i in range(youth_players.size()):
+		var p: Dictionary = youth_players[i]
+		_label(str(p.get("name", "Prospetto")) + " • " + str(p.get("age", 17)) + " anni • " + str(p.get("position", "CC")) + " • " + str(p.get("rating", 45)) + " OVR / " + str(p.get("potential", 80)) + " POT")
+		var index := i
+		_button("Promuovi in prima squadra", func(): _sign_youth(index))
+	if youth_players.is_empty():
+		_label("Nessun prospetto disponibile. La prossima selezione arriverà a inizio stagione.")
+
+func _sign_youth(index: int) -> void:
+	if index < 0 or index >= youth_players.size():
+		return
+	if players.size() >= 30:
+		_label("Rosa completa: vendi o svincola un giocatore prima di promuovere un giovane.")
+		return
+	var prospect: Dictionary = youth_players[index].duplicate(true)
+	prospect.erase("youth")
+	prospect["apps"] = 0
+	prospect["goals"] = 0
+	prospect["assists"] = 0
+	prospect["yellow"] = 0
+	prospect["yellow_season"] = 0
+	prospect["red"] = 0
+	prospect["suspension"] = 0
+	prospect["injury"] = 0
+	prospect["role"] = "Promessa"
+	players.append(prospect)
+	youth_players.remove_at(index)
+	_ensure_lineup()
+	_save_game()
+	_show_youth()
+	_label("Promosso: " + str(prospect.get("name", "Giocatore")) + " entra in prima squadra.")
+
+func _show_staff() -> void:
+	_clear_content()
+	_label("STAFF TECNICO", 22)
+	_label("Assumi specialisti per migliorare prestazioni, scouting, prevenzione infortuni e crescita dei giovani.")
+	var descriptions := {
+		"coach":"Allenatore: bonus alla forza della squadra e agli allenamenti",
+		"scout":"Responsabile scouting: mercato più ricco e prospetti migliori",
+		"physio":"Preparatore atletico: riduce il rischio di infortunio",
+		"academy":"Direttore settore giovanile: più giovani e potenziale superiore"
+	}
+	for role in ["coach", "scout", "physio", "academy"]:
+		_label(str(descriptions[role]) + " • Livello " + str(staff.get(role, 0)))
+		var role_key: String = role
+		_button("Migliora (" + _money(150000 * (int(staff.get(role_key, 0)) + 1)) + " €)", func(): _upgrade_staff(role_key))
+	_button("Torna alla gestione club", func(): _show_tab("Club"))
+
+func _upgrade_staff(role: String) -> void:
+	if not staff.has(role):
+		return
+	var level := int(staff.get(role, 0))
+	if level >= 5:
+		_label("Questo reparto ha già raggiunto il livello massimo.")
+		return
+	var cost := 300000 * (level + 1) if role == "academy" else 150000 * (level + 1)
+	if cash < cost:
+		_label("Fondi insufficienti: servono €" + _money(cost) + ".")
+		return
+	cash -= cost
+	staff[role] = level + 1
+	if role == "academy":
+		_generate_youth_intake()
+	_save_game()
+	if selected_tab == "Giovanili":
+		_show_youth()
+	else:
+		_show_staff()
+
+func _show_stats() -> void:
+	_clear_content()
+	_label("STATISTICHE STAGIONALI", 22)
+	_label("Capocannonieri della tua squadra, assist, presenze e disciplina.")
+	var sorted_players: Array = players.duplicate()
+	sorted_players.sort_custom(func(a, b): return int(a.get("goals", 0)) > int(b.get("goals", 0)))
+	_label("MARCATORI", 18)
+	for i in range(mini(10, sorted_players.size())):
+		var p: Dictionary = sorted_players[i]
+		_label(str(i + 1) + ". " + str(p.get("name", "Giocatore")) + " — " + str(p.get("goals", 0)) + " gol • " + str(p.get("apps", 0)) + " pres. • " + str(p.get("assists", 0)) + " assist")
+	_label("DISCIPLINA E DISPONIBILITÀ", 18)
+	for p in players:
+		if int(p.get("yellow", 0)) > 0 or int(p.get("red", 0)) > 0 or int(p.get("injury", 0)) > 0 or int(p.get("suspension", 0)) > 0:
+			_label(str(p.get("name", "Giocatore")) + " • Gialli " + str(p.get("yellow", 0)) + " • Rossi " + str(p.get("red", 0)) + " • Infortunio " + str(p.get("injury", 0)) + " turni • Squalifica " + str(p.get("suspension", 0)) + " turni")
+	_button("Aggiorna statistiche", func(): _save_game(); _show_stats())
+
 func _weekly_wages() -> int:
 	var total := 0
 	for p in players:
@@ -833,7 +992,7 @@ func _money(value: int) -> String:
 	return str(value)
 
 func _save_game() -> void:
-	var data := {"club_name":club_name,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"market":market,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus}
+	var data := {"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"market":market,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus}
 	var file := FileAccess.open(SAVE_PATH,FileAccess.WRITE)
 	if file:
 		file.store_string(JSON.stringify(data))
@@ -859,6 +1018,9 @@ func _load_game() -> void:
 	cash = int(d.get("cash",2500000))
 	wage_budget = int(d.get("wage_budget",65000))
 	players = d.get("players",[])
+	youth_players = d.get("youth_players", [])
+	staff = d.get("staff", {"coach":0,"scout":0,"physio":0,"academy":0})
+	season_history = d.get("season_history", [])
 	league = d.get("league",[])
 	fixtures = d.get("fixtures",[])
 	market = d.get("market",[])
