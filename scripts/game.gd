@@ -394,15 +394,44 @@ func _generate_league() -> void:
 
 func _generate_market() -> void:
 	market.clear()
-	for i in range(24 + int(staff.get("scout", 0)) * 3):
-		var p := _make_player(i)
+	var real_pool: Array = []
+	for comp_code in real_roster_db.keys():
+		var comp: Dictionary = real_roster_db[comp_code]
+		var clubs: Dictionary = comp.get("clubs", {})
+		for club in clubs.keys():
+			if str(club) == club_name: continue
+			for row in clubs[club].get("players", []):
+				real_pool.append({"row":row,"club":str(club),"division":str(comp.get("division", ""))})
+	real_pool.shuffle()
+	var target_size := 24 + int(staff.get("scout", 0)) * 3
+	var real_count := mini(18, mini(target_size, real_pool.size()))
+	for i in range(real_count):
+		var entry: Dictionary = real_pool[i]
+		var row: Dictionary = entry.get("row", {})
+		var raw_pos := str(row.get("position", ""))
+		var pos := "CC"
+		if raw_pos == "GK": pos = "POR"
+		elif raw_pos == "DF": pos = ["DC","TD","TS"][i % 3]
+		elif raw_pos == "FW": pos = ["ATT","AS","AD"][i % 3]
+		elif raw_pos == "MF": pos = ["CC","CDC","COC"][i % 3]
+		var base_rating := 66
+		if str(entry.get("division", "")) in ["Premier League","Liga 1","Serie A","Ligue 1","Bundesliga 1"]:
+			base_rating = 73
+		var rating := clampi(base_rating + randi_range(-12, 12), 45, 92)
+		var identity := str(row.get("qid", row.get("name", "player")))
+		var player_id := absi(hash(identity + "|" + str(entry.get("club", ""))))
+		var player := {"id":player_id,"portrait_seed":player_id,"name":str(row.get("name","Player")),"position":pos,"age":randi_range(18,34),"rating":rating,"potential":mini(95,rating+randi_range(2,17)),"wage":rating*70,"value":rating*rating*1450,"morale":randi_range(60,88),"fitness":100,"injury":0,"contract":randi_range(1,4),"role":"Importante","goals":0,"assists":0,"apps":0,"yellow":0,"red":0,"nationality":str(row.get("nationality","")),"shirt_number":int(row.get("number",0)),"real_player":true,"source":"OpenFootballBase","club":str(entry.get("club",""))}
 		if int(staff.get("scout", 0)) > 0:
-			p["rating"] = mini(88, int(p["rating"]) + randi_range(0, int(staff.get("scout", 0)) * 2))
-			p["potential"] = mini(94, int(p["potential"]) + int(staff.get("scout", 0)))
-		p["value"] = int(p["rating"] * p["rating"] * 1450)
-		p["wage"] = randi_range(700,5000)
-		p["club"] = CLUBS.pick_random()
-		market.append(p)
+			player["rating"] = mini(92, int(player["rating"]) + randi_range(0, int(staff.get("scout", 0))))
+			player["potential"] = mini(96, int(player["potential"]) + int(staff.get("scout", 0)))
+		market.append(player)
+	for i in range(target_size - market.size()):
+		var generated: Dictionary = _make_player(i)
+		generated["generated"] = true
+		generated["value"] = int(generated["rating"] * generated["rating"] * 1450)
+		generated["wage"] = randi_range(700,5000)
+		generated["club"] = CLUBS.pick_random()
+		market.append(generated)
 
 func _show_tab(tab: String) -> void:
 	selected_tab = tab
