@@ -2678,7 +2678,13 @@ func _weekly_wages() -> int:
 	return total
 
 func _money(value: int) -> String:
-	return str(value)
+	var raw := str(absi(value))
+	var formatted := ""
+	for i in range(raw.length()):
+		if i > 0 and (raw.length() - i) % 3 == 0:
+			formatted += "."
+		formatted += raw.substr(i, 1)
+	return ("-" if value < 0 else "") + formatted
 
 func _parse_save_text(raw_text: String) -> Variant:
 	var parser := JSON.new()
