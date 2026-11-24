@@ -234,14 +234,14 @@ func _run_smoke_test() -> void:
 	if visualizer_node == null:
 		_fail("match visualizer did not load with the match report")
 		return
-	visualizer_node.setup({"home": "Home Test", "away": "Away Test", "events": [{"type": "goal", "team": "Home Test"}]})
-	visualizer_node._process(0.2)
-	if visualizer_node.ball_position.x <= 0.5:
+	visualizer_node.call("setup", {"home": "Home Test", "away": "Away Test", "events": [{"type": "goal", "team": "Home Test"}]})
+	visualizer_node.call("_process", 0.2)
+	if float(visualizer_node.get("ball_position").x) <= 0.5:
 		_fail("home goal did not animate the ball toward the away goal")
 		return
-	visualizer_node.setup({"home": "Home Test", "away": "Away Test", "events": [{"type": "goal", "team": "Away Test"}]})
-	visualizer_node._process(0.2)
-	if visualizer_node.ball_position.x >= 0.5:
+	visualizer_node.call("setup", {"home": "Home Test", "away": "Away Test", "events": [{"type": "goal", "team": "Away Test"}]})
+	visualizer_node.call("_process", 0.2)
+	if float(visualizer_node.get("ball_position").x) >= 0.5:
 		_fail("away goal did not animate the ball toward the home goal")
 		return
 	for _round in range(3):
