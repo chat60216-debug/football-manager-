@@ -38,6 +38,25 @@ func _run_smoke_test() -> void:
 	if game.pyramid_state.size() != 3:
 		_fail("Italian league pyramid did not initialize")
 		return
+	var original_country: String = game.country
+	var original_division: String = game.division
+	for test_country in game.COUNTRIES:
+		game.country = str(test_country)
+		for test_division in game.DIVISIONS[game.country]:
+			game.division = str(test_division)
+			var club_names: Array = game._league_team_names()
+			var expected_count := 20
+			if game.division in ["League One","League Two","Championship"]: expected_count = 24
+			elif game.division == "Liga 2": expected_count = 22
+			elif game.division in ["Ligue 3","Ligue 2","Ligue 1","Bundesliga 2","Bundesliga 1"]: expected_count = 18
+			if club_names.size() != expected_count:
+				_fail("incorrect 2026/27 club count for " + game.country + " " + game.division + ": " + str(club_names.size()))
+				return
+			if club_names.size() != club_names.duplicate().size():
+				_fail("duplicate clubs in " + game.country + " " + game.division)
+				return
+	game.country = original_country
+	game.division = original_division
 	if game.european_competitions.size() != 3:
 		_fail("UEFA competitions did not initialize")
 		return
