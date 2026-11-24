@@ -45,8 +45,16 @@ var qualified_european_comp := ""
 var selected_sub_out := -1
 var selected_sub_in := -1
 var selected_tab := "Home"
-var root: VBoxContainer
+var root: HBoxContainer
 var content: VBoxContainer
+var navigation: VBoxContainer
+var selected_club_name := ""
+var setup_manager_name: LineEdit
+var setup_difficulty: OptionButton
+var setup_budget: OptionButton
+var career_difficulty := "Normale"
+var manager_name := "Manager"
+var starting_budget_mode := "Standard"
 var status_label: Label
 var setup_name: LineEdit
 var setup_country: OptionButton
@@ -64,8 +72,11 @@ func _ready() -> void:
 	_load_real_roster_database()
 	_build_shell()
 	if FileAccess.file_exists(SAVE_PATH):
-		_add_button("Carica carriera salvata", _load_game)
-		_add_button("Nuova carriera", _show_setup)
+		_clear_content()
+		_label("FOOTBALL CAREER: DYNASTY", 28)
+		_label("La tua prossima storia comincia qui.", 18)
+		_button("CONTINUA LA CARRIERA", _load_game)
+		_button("NUOVA CARRIERA", _show_setup)
 	else:
 		_show_setup()
 
@@ -140,70 +151,104 @@ func _build_shell() -> void:
 	for child in get_children():
 		child.queue_free()
 	var bg := ColorRect.new()
-	bg.color = Color("#07111f")
+	bg.color = Color("#07101d")
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 	var accent := ColorRect.new()
-	accent.color = Color("#18b6c9")
+	accent.color = Color("#d6a94b")
 	accent.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	accent.custom_minimum_size = Vector2(0, 5)
+	accent.custom_minimum_size = Vector2(0, 4)
 	add_child(accent)
-	root = VBoxContainer.new()
+	root = HBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root.add_theme_constant_override("separation", 10)
+	root.add_theme_constant_override("separation", 0)
 	root.theme = _make_dynasty_theme()
 	add_child(root)
-	var masthead := PanelContainer.new()
-	masthead.custom_minimum_size = Vector2(0, 76)
-	root.add_child(masthead)
-	var brand_row := HBoxContainer.new()
-	brand_row.add_theme_constant_override("separation", 10)
-	masthead.add_child(brand_row)
-	var title := Label.new()
-	title.text = "⚽  DYNASTY"
-	title.add_theme_font_size_override("font_size", 27)
-	title.add_theme_color_override("font_color", Color("#79e1ed"))
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	brand_row.add_child(title)
-	var season_mark := Label.new()
-	season_mark.text = "CAREER MODE  •  26/27"
-	season_mark.add_theme_font_size_override("font_size", 11)
-	season_mark.add_theme_color_override("font_color", Color("#8fa9c4"))
-	season_mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	brand_row.add_child(season_mark)
+	var sidebar := PanelContainer.new()
+	sidebar.custom_minimum_size = Vector2(196, 0)
+	sidebar.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(sidebar)
+	var side_box := VBoxContainer.new()
+	side_box.add_theme_constant_override("separation", 12)
+	sidebar.add_child(side_box)
+	var brand := Label.new()
+	brand.text = "DYNASTY"
+	brand.add_theme_font_size_override("font_size", 26)
+	brand.add_theme_color_override("font_color", Color("#e5bd69"))
+	brand.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	side_box.add_child(brand)
+	var edition := Label.new()
+	edition.text = "FOOTBALL CAREER"
+	edition.add_theme_font_size_override("font_size", 10)
+	edition.add_theme_color_override("font_color", Color("#8295aa"))
+	edition.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	side_box.add_child(edition)
+	var separator := HSeparator.new()
+	side_box.add_child(separator)
+	navigation = VBoxContainer.new()
+	navigation.add_theme_constant_override("separation", 5)
+	side_box.add_child(navigation)
+	for tab in ["Home","Rosa","Formazione","Calendario","Classifica","Mercato","Coppe","UEFA","Club","Giovanili","Staff","Statistiche","Società"]:
+		var button := Button.new()
+		button.text = tab
+		button.custom_minimum_size = Vector2(0, 39)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.pressed.connect(func(): _show_tab(tab))
+		navigation.add_child(button)
+	var side_spacer := Control.new()
+	side_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	side_box.add_child(side_spacer)
+	var version := Label.new()
+	version.text = "SEASON 2026 / 27"
+	version.add_theme_font_size_override("font_size", 10)
+	version.add_theme_color_override("font_color", Color("#71869d"))
+	version.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	side_box.add_child(version)
+	var main := VBoxContainer.new()
+	main.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	main.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	main.add_theme_constant_override("separation", 0)
+	root.add_child(main)
+	var topbar := PanelContainer.new()
+	topbar.custom_minimum_size = Vector2(0, 66)
+	main.add_child(topbar)
+	var top_row := HBoxContainer.new()
+	top_row.add_theme_constant_override("separation", 12)
+	topbar.add_child(top_row)
 	status_label = Label.new()
-	status_label.text = "La tua carriera calcistica"
-	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	status_label.add_theme_color_override("font_color", Color("#a9bfd5"))
-	root.add_child(status_label)
-	var nav_panel := PanelContainer.new()
-	root.add_child(nav_panel)
-	var nav := GridContainer.new()
-	nav.columns = 4
-	nav.add_theme_constant_override("h_separation", 7)
-	nav.add_theme_constant_override("v_separation", 7)
-	nav_panel.add_child(nav)
-	for tab in ["Home","Rosa","Formazione","Mercato","Classifica","Coppe","UEFA","Club","Giovanili","Staff","Statistiche","Società"]:
-		var b := Button.new()
-		b.text = tab
-		b.custom_minimum_size = Vector2(0, 46)
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.pressed.connect(func(): _show_tab(tab))
-		nav.add_child(b)
+	status_label.text = "CENTRO DIREZIONALE  /  LA TUA CARRIERA"
+	status_label.add_theme_font_size_override("font_size", 15)
+	status_label.add_theme_color_override("font_color", Color("#dce7f3"))
+	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	top_row.add_child(status_label)
+	var season_mark := Label.new()
+	season_mark.text = "DYNASTY  •  26/27"
+	season_mark.add_theme_font_size_override("font_size", 11)
+	season_mark.add_theme_color_override("font_color", Color("#d6b66f"))
+	season_mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	top_row.add_child(season_mark)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	root.add_child(scroll)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	main.add_child(scroll)
 	var page_panel := PanelContainer.new()
 	page_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	page_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.add_child(page_panel)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 18)
+	margin.add_theme_constant_override("margin_right", 18)
+	margin.add_theme_constant_override("margin_top", 16)
+	margin.add_theme_constant_override("margin_bottom", 16)
+	page_panel.add_child(margin)
 	content = VBoxContainer.new()
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 12)
-	page_panel.add_child(content)
+	content.add_theme_constant_override("separation", 13)
+	margin.add_child(content)
 	ui_built = true
+	navigation.visible = false
 
 func _clear_content() -> void:
 	for child in content.get_children():
@@ -236,29 +281,121 @@ func _add_button(text_value: String, callback: Callable) -> void:
 	_button(text_value, callback)
 
 func _show_setup() -> void:
+	_show_team_selection()
+
+func _show_team_selection() -> void:
+	navigation.visible = false
 	_clear_content()
-	_label("CREA IL TUO CLUB", 23)
-	_label("Nome della squadra")
-	setup_name = LineEdit.new()
-	setup_name.placeholder_text = "Es. AC Nova Milano"
-	setup_name.text = "AC Nova Milano"
-	content.add_child(setup_name)
-	_label("Paese")
+	_label("01  /  SCEGLI IL TUO CLUB", 26)
+	_label("Il primo passo della tua carriera. Seleziona il paese, il campionato e la squadra che guiderai.", 16)
+	var selectors := HBoxContainer.new()
+	selectors.add_theme_constant_override("separation", 12)
+	content.add_child(selectors)
+	var country_box := VBoxContainer.new()
+	country_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	selectors.add_child(country_box)
+	var country_label := Label.new()
+	country_label.text = "PAESE"
+	country_label.add_theme_color_override("font_color", Color("#d6b66f"))
+	country_box.add_child(country_label)
 	setup_country = OptionButton.new()
+	setup_country.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for c in COUNTRIES:
 		setup_country.add_item(c)
-	setup_country.item_selected.connect(_country_changed)
-	content.add_child(setup_country)
-	_label("Divisione")
+	country_box.add_child(setup_country)
+	var division_box := VBoxContainer.new()
+	division_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	selectors.add_child(division_box)
+	var division_label := Label.new()
+	division_label.text = "CAMPIONATO"
+	division_label.add_theme_color_override("font_color", Color("#d6b66f"))
+	division_box.add_child(division_label)
 	setup_division = OptionButton.new()
-	content.add_child(setup_division)
+	setup_division.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	division_box.add_child(setup_division)
+	setup_country.item_selected.connect(_country_changed)
 	setup_division.item_selected.connect(func(_index): _update_setup_real_clubs())
-	_label("Scegli un club reale (facoltativo)")
-	setup_real_club = OptionButton.new()
-	content.add_child(setup_real_club)
 	_country_changed(0)
-	_button("INIZIA LA CARRIERA", _new_career)
-	_label("Scegli un club reale per importare la rosa 2026/27 quando disponibile. Le divisioni senza rose certificate useranno giocatori generati, chiaramente indicati.")
+	_label("SELEZIONA LA SQUADRA", 18)
+	var club_panel := PanelContainer.new()
+	club_panel.custom_minimum_size = Vector2(0, 106)
+	content.add_child(club_panel)
+	var club_box := VBoxContainer.new()
+	club_panel.add_child(club_box)
+	var club_hint := Label.new()
+	club_hint.text = "CLUB DISPONIBILI"
+	club_hint.add_theme_font_size_override("font_size", 11)
+	club_hint.add_theme_color_override("font_color", Color("#8da2b9"))
+	club_box.add_child(club_hint)
+	setup_real_club = OptionButton.new()
+	setup_real_club.custom_minimum_size = Vector2(0, 48)
+	setup_real_club.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	club_box.add_child(setup_real_club)
+	_label("Oppure personalizza il nome del club selezionando “Club personalizzato”.", 13)
+	setup_name = LineEdit.new()
+	setup_name.placeholder_text = "Nome del tuo club"
+	setup_name.text = "AC Nova Milano"
+	content.add_child(setup_name)
+	var note := Label.new()
+	note.text = "Le rose reali vengono caricate quando disponibili; negli altri casi il gioco crea una rosa generata."
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.add_theme_font_size_override("font_size", 12)
+	note.add_theme_color_override("font_color", Color("#8295aa"))
+	content.add_child(note)
+	_button("CONTINUA  →  IMPOSTAZIONI CARRIERA", _continue_to_career_settings)
+
+func _continue_to_career_settings() -> void:
+	if not is_instance_valid(setup_real_club) or setup_real_club.selected < 0:
+		return
+	country = COUNTRIES[setup_country.selected]
+	division = setup_division.get_item_text(setup_division.selected)
+	if setup_real_club.selected == 0:
+		selected_club_name = setup_name.text.strip_edges()
+		if selected_club_name.is_empty():
+			selected_club_name = "Dynasty FC"
+	else:
+		selected_club_name = setup_real_club.get_item_text(setup_real_club.selected)
+	_show_career_settings()
+
+func _show_career_settings() -> void:
+	_clear_content()
+	_label("02  /  IMPOSTA LA CARRIERA", 26)
+	_label(selected_club_name.to_upper() + "   •   " + division + "   •   " + country, 18)
+	_label("Ora definisci il profilo della tua esperienza. Queste opzioni saranno applicate alla nuova carriera.", 15)
+	_label("NOME ALLENATORE")
+	setup_manager_name = LineEdit.new()
+	setup_manager_name.text = "Manager"
+	setup_manager_name.placeholder_text = "Il tuo nome"
+	content.add_child(setup_manager_name)
+	_label("DIFFICOLTÀ")
+	setup_difficulty = OptionButton.new()
+	for option in ["Facile","Normale","Difficile","Legend"]:
+		setup_difficulty.add_item(option)
+	setup_difficulty.select(1)
+	content.add_child(setup_difficulty)
+	_label("SITUAZIONE FINANZIARIA")
+	setup_budget = OptionButton.new()
+	for option in ["Ricca","Standard","Limitata"]:
+		setup_budget.add_item(option)
+	setup_budget.select(1)
+	content.add_child(setup_budget)
+	_label("RIEPILOGO", 18)
+	_label("Club: " + selected_club_name + "\nCampionato: " + division + "\nStagione iniziale: 2026/27\nModalità: Carriera manageriale completa", 15)
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 12)
+	content.add_child(actions)
+	var back := Button.new()
+	back.text = "← CAMBIA CLUB"
+	back.custom_minimum_size = Vector2(0, 54)
+	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	back.pressed.connect(_show_team_selection)
+	actions.add_child(back)
+	var start := Button.new()
+	start.text = "INIZIA LA CARRIERA  →"
+	start.custom_minimum_size = Vector2(0, 54)
+	start.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	start.pressed.connect(_new_career)
+	actions.add_child(start)
 
 func _country_changed(index: int) -> void:
 	if not is_instance_valid(setup_country) or not is_instance_valid(setup_division):
@@ -271,13 +408,12 @@ func _country_changed(index: int) -> void:
 	_update_setup_real_clubs()
 
 func _new_career() -> void:
-	club_name = setup_name.text.strip_edges()
-	if is_instance_valid(setup_real_club) and setup_real_club.selected > 0:
-		club_name = setup_real_club.get_item_text(setup_real_club.selected)
-	if club_name.is_empty():
-		club_name = "Dynasty FC"
-	country = COUNTRIES[setup_country.selected]
-	division = setup_division.get_item_text(setup_division.selected)
+	club_name = selected_club_name if selected_club_name != "" else "Dynasty FC"
+	manager_name = setup_manager_name.text.strip_edges() if is_instance_valid(setup_manager_name) else "Manager"
+	if manager_name == "":
+		manager_name = "Manager"
+	career_difficulty = setup_difficulty.get_item_text(setup_difficulty.selected) if is_instance_valid(setup_difficulty) else "Normale"
+	starting_budget_mode = setup_budget.get_item_text(setup_budget.selected) if is_instance_valid(setup_budget) else "Standard"
 	season = 2026
 	last_season_message = ""
 	pyramid_state.clear()
@@ -290,8 +426,16 @@ func _new_career() -> void:
 	lineup_ids.clear()
 	training_focus = "Equilibrio"
 	day = 0
-	cash = 2500000
-	wage_budget = 65000
+	match starting_budget_mode:
+		"Ricca":
+			cash = 6500000
+			wage_budget = 135000
+		"Limitata":
+			cash = 850000
+			wage_budget = 32000
+		_:
+			cash = 2500000
+			wage_budget = 65000
 	players.clear()
 	staff = {"coach":0,"scout":0,"physio":0,"academy":0}
 	for real_player in _players_for_real_club(club_name):
@@ -299,6 +443,10 @@ func _new_career() -> void:
 	for i in range(maxi(0, 22 - players.size())):
 		var generated_player: Dictionary = _make_player(i)
 		generated_player["generated"] = true
+		if career_difficulty == "Difficile":
+			generated_player["rating"] = maxi(45, int(generated_player.get("rating", 60)) - 3)
+		elif career_difficulty == "Legend":
+			generated_player["rating"] = maxi(42, int(generated_player.get("rating", 60)) - 6)
 		players.append(generated_player)
 	_ensure_lineup()
 	_generate_league()
@@ -564,12 +712,15 @@ func _show_tab(tab: String) -> void:
 	selected_tab = tab
 	if not ui_built:
 		return
+	navigation.visible = true
+	status_label.text = "CENTRO DIREZIONALE  /  " + tab.to_upper()
 	match tab:
 		"Home": _show_home()
 		"Rosa": _show_squad()
 		"Formazione": _show_formation()
 		"Mercato": _show_market()
 		"Classifica": _show_table()
+		"Calendario": _show_table()
 		"Coppe": _show_cups()
 		"Club": _show_club()
 		"Giovanili": _show_youth()
@@ -1747,7 +1898,7 @@ func _money(value: int) -> String:
 	return str(value)
 
 func _save_game() -> void:
-	var data := {"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"market":market,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
+	var data := {"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"manager_name":manager_name,"career_difficulty":career_difficulty,"starting_budget_mode":starting_budget_mode,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"market":market,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
 	var file := FileAccess.open(SAVE_PATH,FileAccess.WRITE)
 	if file:
 		file.store_string(JSON.stringify(data))
@@ -1777,6 +1928,7 @@ func _load_game() -> void:
 	if not FileAccess.file_exists(SAVE_PATH):
 		_show_setup()
 		return
+	navigation.visible = true
 	var file := FileAccess.open(SAVE_PATH,FileAccess.READ)
 	if file == null:
 		return
@@ -1785,6 +1937,9 @@ func _load_game() -> void:
 		return
 	var d: Dictionary = parsed
 	club_name = str(d.get("club_name","Dynasty FC"))
+	manager_name = str(d.get("manager_name", "Manager"))
+	career_difficulty = str(d.get("career_difficulty", "Normale"))
+	starting_budget_mode = str(d.get("starting_budget_mode", "Standard"))
 	country = str(d.get("country","Italia"))
 	division = str(d.get("division","Serie C"))
 	season = int(d.get("season",2026))
