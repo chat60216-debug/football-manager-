@@ -296,6 +296,7 @@ func _run_smoke_test() -> void:
 		_fail("tactical pitch drag signal did not update the lineup")
 		return
 	game._show_society()
+	game.cash = 1000000
 	var training_level := int(game.facilities.get("training", 1))
 	game._upgrade_facility("training")
 	if int(game.facilities.get("training", 1)) != training_level + 1:
