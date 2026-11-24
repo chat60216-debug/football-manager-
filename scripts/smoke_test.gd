@@ -259,6 +259,19 @@ func _run_smoke_test() -> void:
 	if game.match_report.is_empty():
 		_fail("league match did not create a report")
 		return
+	var match_stats: Dictionary = game.match_report.get("stats", {})
+	if match_stats.is_empty():
+		_fail("match report did not include match statistics")
+		return
+	if int(match_stats.get("home_possession", 0)) + int(match_stats.get("away_possession", 0)) != 100:
+		_fail("match possession statistics did not total 100 percent")
+		return
+	if int(match_stats.get("home_shots", 0)) < int(game.match_report.get("home_goals", 0)) or int(match_stats.get("away_shots", 0)) < int(game.match_report.get("away_goals", 0)):
+		_fail("match shot statistics were lower than the goals scored")
+		return
+	if int(match_stats.get("home_shots_target", 0)) > int(match_stats.get("home_shots", 0)) or int(match_stats.get("away_shots_target", 0)) > int(match_stats.get("away_shots", 0)):
+		_fail("shots on target exceeded total shots")
+		return
 	var saved_user_fixture_result := false
 	for recorded_result in game.match_results:
 		if int(recorded_result.get("season", -1)) == game.season and int(recorded_result.get("day", -1)) == 0 and (str(recorded_result.get("home", "")) == game.club_name or str(recorded_result.get("away", "")) == game.club_name):
