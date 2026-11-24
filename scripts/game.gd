@@ -1108,23 +1108,49 @@ func _club_power(team: String) -> int:
 	# receive a different random rating every time the simulator asks for it.
 	return 58 + absi(hash(str(team) + "|" + str(season))) % 21
 
+func _position_fit_penalty(player_position: String, slot_position: String) -> int:
+	if player_position == slot_position:
+		return 0
+	if slot_position in ["TD", "TS"] and player_position in ["TD", "TS", "DC"]:
+		return 2
+	if slot_position in ["DC"] and player_position in ["TD", "TS", "CDC"]:
+		return 3
+	if slot_position in ["CDC", "CC", "COC"] and player_position in ["CDC", "CC", "COC"]:
+		return 1
+	if slot_position in ["AD", "AS"] and player_position in ["AD", "AS", "ATT"]:
+		return 2
+	if slot_position == "ATT" and player_position in ["AD", "AS", "COC"]:
+		return 3
+	if slot_position == "POR" and player_position != "POR":
+		return 18
+	return 7
+
 func _team_rating() -> int:
 	if players.is_empty():
 		return 0
 	_ensure_lineup()
-	var total := 0
+	var total := 0.0
 	var count := 0
-	for player_id in lineup_ids:
+	var slots := _formation_positions()
+	for slot_index in range(lineup_ids.size()):
+		var player_id := int(lineup_ids[slot_index])
 		for p in players:
-			if int(p.get("id", -1)) == int(player_id):
-				total += int(p.get("rating", 50))
-				count += 1
-				break
+			if int(p.get("id", -1)) != player_id:
+				continue
+			var effective_rating := float(p.get("rating", 50))
+			effective_rating -= float(_position_fit_penalty(str(p.get("position", "")), str(slots[slot_index]))) if slot_index < slots.size() else 0.0
+			effective_rating -= maxf(0.0, 75.0 - float(p.get("fitness", 100))) * 0.07
+			effective_rating -= maxf(0.0, 50.0 - float(p.get("morale", 70))) * 0.05
+			if int(p.get("injury", 0)) > 0 or int(p.get("suspension", 0)) > 0:
+				effective_rating -= 12.0
+			total += effective_rating
+			count += 1
+			break
 	if count == 0:
 		for p in players:
-			total += int(p.get("rating", 50))
+			total += float(p.get("rating", 50))
 			count += 1
-	return mini(99, int(round(float(total) / max(1, count))) + int(staff.get("coach", 0)) * 2)
+	return mini(99, int(round(total / max(1, count))) + int(staff.get("coach", 0)) * 2)
 
 func _formation_positions() -> Array:
 	match formation:
