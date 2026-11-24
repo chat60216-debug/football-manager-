@@ -25,6 +25,9 @@ var cup_teams: Array = []
 var cup_winner := ""
 var european_status := "Non qualificato"
 var tactics := {"mentalita":"Equilibrata","pressing":"Medio","costruzione":"Mista","linea":"Media"}
+var formation := "4-3-3"
+var lineup_ids: Array = []
+var training_focus := "Equilibrio"
 var selected_tab := "Home"
 var root: VBoxContainer
 var content: VBoxContainer
@@ -73,7 +76,7 @@ func _build_shell() -> void:
 	var nav := GridContainer.new()
 	nav.columns = 3
 	root.add_child(nav)
-	for tab in ["Home","Rosa","Mercato","Classifica","Coppe","Club"]:
+	for tab in ["Home","Rosa","Formazione","Mercato","Classifica","Coppe","Club"]:
 		var b := Button.new()
 		b.text = tab
 		b.custom_minimum_size = Vector2(0, 44)
@@ -157,6 +160,7 @@ func _new_career() -> void:
 	players.clear()
 	for i in range(22):
 		players.append(_make_player(i))
+	_ensure_lineup()
 	_generate_league()
 	_generate_market()
 	cup_round = 0
@@ -170,7 +174,7 @@ func _make_player(index: int) -> Dictionary:
 	var pos: String = POSITIONS[index % POSITIONS.size()]
 	var rating := randi_range(54, 76)
 	var age := randi_range(17, 34)
-	return {"id":randi(),"name":FIRST.pick_random()+" "+LAST.pick_random(),"position":pos,"age":age,"rating":rating,"potential":mini(92,rating+randi_range(2,20)),"wage":randi_range(900,4200),"value":rating*rating*1200,"morale":randi_range(65,90),"fitness":randi_range(82,100),"injury":0,"contract":randi_range(1,4),"role":ROLES.pick_random(),"goals":0,"assists":0,"apps":0,"yellow":0,"red":0}
+	return {"id":randi(),"portrait_seed":randi(),"name":FIRST.pick_random()+" "+LAST.pick_random(),"position":pos,"age":age,"rating":rating,"potential":mini(92,rating+randi_range(2,20)),"wage":randi_range(900,4200),"value":rating*rating*1200,"morale":randi_range(65,90),"fitness":randi_range(82,100),"injury":0,"contract":randi_range(1,4),"role":ROLES.pick_random(),"goals":0,"assists":0,"apps":0,"yellow":0,"red":0}
 
 func _league_team_names() -> Array:
 	var key := country + "|" + division
@@ -262,6 +266,7 @@ func _show_tab(tab: String) -> void:
 	match tab:
 		"Home": _show_home()
 		"Rosa": _show_squad()
+		"Formazione": _show_formation()
 		"Mercato": _show_market()
 		"Classifica": _show_table()
 		"Coppe": _show_cups()
@@ -375,10 +380,98 @@ func _club_power(team: String) -> int:
 func _team_rating() -> int:
 	if players.is_empty():
 		return 0
+	_ensure_lineup()
 	var total := 0
+	var count := 0
+	for player_id in lineup_ids:
+		for p in players:
+			if int(p.get("id", -1)) == int(player_id):
+				total += int(p.get("rating", 50))
+				count += 1
+				break
+	if count == 0:
+		for p in players:
+			total += int(p.get("rating", 50))
+			count += 1
+	return int(round(float(total) / max(1, count)))
+
+func _formation_positions() -> Array:
+	match formation:
+		"4-2-3-1":
+			return ["POR","TD","DC","DC","TS","CDC","CDC","AD","COC","AS","ATT"]
+		"4-4-2":
+			return ["POR","TD","DC","DC","TS","AD","CC","CC","AS","ATT","ATT"]
+		"3-5-2":
+			return ["POR","DC","DC","DC","TD","CDC","CC","CC","TS","ATT","ATT"]
+		_:
+			return ["POR","TD","DC","DC","TS","CDC","CC","CC","AD","AS","ATT"]
+
+func _ensure_lineup() -> void:
+	var valid_ids: Array = []
 	for p in players:
-		total += int(p.rating)
-	return int(round(float(total)/players.size()))
+		valid_ids.append(int(p.get("id", -1)))
+	if lineup_ids.size() == 11:
+		var all_valid := true
+		for player_id in lineup_ids:
+			if not valid_ids.has(int(player_id)):
+				all_valid = false
+				break
+		if all_valid:
+			return
+	lineup_ids.clear()
+	var ordered: Array = players.duplicate()
+	ordered.sort_custom(func(a, b): return int(a.get("rating", 0)) > int(b.get("rating", 0)))
+	for i in range(mini(11, ordered.size())):
+		lineup_ids.append(int(ordered[i].get("id", -1)))
+
+func _show_formation() -> void:
+	_clear_content()
+	_ensure_lineup()
+	_label("FORMAZIONE TITOLARE", 22)
+	_label("Scegli il modulo e assegna un calciatore a ogni posizione. La media della squadra e la simulazione useranno gli undici titolari.")
+	var modules := OptionButton.new()
+	for module in ["4-3-3","4-2-3-1","4-4-2","3-5-2"]:
+		modules.add_item(module)
+	modules.select(["4-3-3","4-2-3-1","4-4-2","3-5-2"].find(formation))
+	modules.item_selected.connect(func(i):
+		formation = modules.get_item_text(i)
+		_show_formation()
+	)
+	content.add_child(modules)
+	var positions := _formation_positions()
+	for i in range(positions.size()):
+		var slot_index := i
+		var row := HBoxContainer.new()
+		content.add_child(row)
+		var position_label := Label.new()
+		position_label.text = str(i + 1) + ". " + str(positions[i])
+		position_label.custom_minimum_size = Vector2(78, 42)
+		row.add_child(position_label)
+		var choice := OptionButton.new()
+		choice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		for p in players:
+			choice.add_item(str(p.get("name", "Giocatore")) + " • " + str(p.get("rating", 0)) + " OVR")
+		var selected_index := 0
+		for j in range(players.size()):
+			if j < lineup_ids.size() and int(players[j].get("id", -1)) == int(lineup_ids[i]):
+				selected_index = j
+				break
+		if players.size() > 0:
+			choice.select(selected_index)
+		choice.item_selected.connect(func(option_index):
+			_set_lineup_player(slot_index, option_index)
+		)
+		row.add_child(choice)
+	_label("Media titolari: " + str(_team_rating()) + " OVR")
+	_button("Salva formazione", func(): _save_game(); _show_home())
+
+func _set_lineup_player(slot_index: int, player_index: int) -> void:
+	if slot_index < 0 or slot_index >= 11 or player_index < 0 or player_index >= players.size():
+		return
+	while lineup_ids.size() < 11:
+		lineup_ids.append(-1)
+	lineup_ids[slot_index] = int(players[player_index].get("id", -1))
+	_save_game()
 
 func _apply_player_match(goals: int, conceded: int) -> void:
 	var fit_players: Array = players.filter(func(p): return int(p.injury)==0)
@@ -583,14 +676,47 @@ func _show_club() -> void:
 	_label("Budget ingaggi settimanale: €"+_money(wage_budget))
 	_label("Stipendi rosa: €"+_money(_weekly_wages())+"/sett.")
 	_label("Status UEFA: "+european_status)
+	_label("ALLENAMENTO SETTIMANALE", 19)
+	var focus := OptionButton.new()
+	for item in ["Equilibrio","Tecnica","Fisico","Tattica","Recupero"]:
+		focus.add_item(item)
+	focus.select(["Equilibrio","Tecnica","Fisico","Tattica","Recupero"].find(training_focus))
+	focus.item_selected.connect(func(i): training_focus = focus.get_item_text(i))
+	content.add_child(focus)
+	_button("Svolgi allenamento (€25.000)", _train_squad)
+	_button("Apri formazione", _show_formation)
 	_button("Salva partita",_save_game)
 	_button("Carica partita",_load_game)
 	_button("Nuova stagione",_new_season)
+
+func _train_squad() -> void:
+	if cash < 25000:
+		_label("Fondi insufficienti per l'allenamento.")
+		return
+	cash -= 25000
+	for p in players:
+		match training_focus:
+			"Tecnica":
+				if int(p.get("age", 30)) < 30:
+					p.rating = mini(int(p.get("potential", 90)), int(p.get("rating", 50)) + 1)
+			"Fisico":
+				p.fitness = mini(100, int(p.get("fitness", 70)) + 12)
+			"Tattica":
+				p.morale = mini(100, int(p.get("morale", 70)) + 5)
+			"Recupero":
+				p.fitness = mini(100, int(p.get("fitness", 70)) + 20)
+				p.injury = maxi(0, int(p.get("injury", 0)) - 1)
+			_:
+				p.fitness = mini(100, int(p.get("fitness", 70)) + 6)
+				p.morale = mini(100, int(p.get("morale", 70)) + 2)
+	_save_game()
+	_show_club()
 
 func _new_season() -> void:
 	season += 1
 	day = 0
 	for p in players:
+		p.age = int(p.get("age", 20)) + 1
 		p.contract = maxi(0,int(p.contract)-1)
 		p.fitness = 100
 		p.injury = 0
@@ -605,6 +731,7 @@ func _new_season() -> void:
 	european_status = "Non qualificato"
 	_generate_market()
 	cash += 1000000
+	_ensure_lineup()
 	_save_game()
 	_show_home()
 
@@ -638,7 +765,7 @@ func _money(value: int) -> String:
 	return str(value)
 
 func _save_game() -> void:
-	var data := {"club_name":club_name,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"market":market,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics}
+	var data := {"club_name":club_name,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"market":market,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus}
 	var file := FileAccess.open(SAVE_PATH,FileAccess.WRITE)
 	if file:
 		file.store_string(JSON.stringify(data))
@@ -672,6 +799,10 @@ func _load_game() -> void:
 	cup_winner = str(d.get("cup_winner",""))
 	european_status = str(d.get("european_status","Non qualificato"))
 	tactics = d.get("tactics",tactics)
+	formation = str(d.get("formation", "4-3-3"))
+	lineup_ids = d.get("lineup_ids", [])
+	training_focus = str(d.get("training_focus", "Equilibrio"))
+	_ensure_lineup()
 	# Migrazione automatica delle vecchie carriere con calendario fisso da 16 club.
 	if league.size() == 16 or fixtures.size() == 30:
 		day = 0
