@@ -2067,6 +2067,9 @@ func _submit_loan_offer() -> void:
 func _renew_player_contract(player_id: int) -> void:
 	for p in players:
 		if int(p.get("id", -1)) == player_id:
+			if bool(p.get("loan", false)):
+				status_label.text = "Un giocatore in prestito non può rinnovare il contratto: il prestito termina a fine stagione."
+				return
 			var current_wage := int(p.get("wage", 0))
 			var new_wage := int(ceil(float(current_wage) * 1.1))
 			var increase := new_wage - current_wage
