@@ -2499,7 +2499,7 @@ func _create_match_report(home: String, away: String, home_goals: int, away_goal
 		var minute := randi_range(2, 90)
 		var is_home := i < home_goals
 		var team_name := home if is_home else away
-		var scorer_name := FIRST.pick_random() + " " + LAST.pick_random()
+		var scorer_name: String = FIRST.pick_random() + " " + LAST.pick_random()
 		var scorer_id := -1
 		if team_name == club_name and not user_attackers.is_empty():
 			var scorer: Dictionary = user_attackers.pick_random()
