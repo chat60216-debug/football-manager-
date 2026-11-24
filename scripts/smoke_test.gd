@@ -296,6 +296,19 @@ func _run_smoke_test() -> void:
 	if not loaned_player_club_correct:
 		_fail("loaned player did not move to the user's club while retaining the parent club")
 		return
+	var loaned_player_id := -1
+	var loaned_player_contract := 0
+	for squad_player in game.players:
+		if bool(squad_player.get("loan", false)):
+			loaned_player_id = int(squad_player.get("id", -1))
+			loaned_player_contract = int(squad_player.get("contract", 0))
+			break
+	var wage_budget_before_loan_renewal := int(game.wage_budget)
+	game._renew_player_contract(loaned_player_id)
+	for squad_player in game.players:
+		if int(squad_player.get("id", -2)) == loaned_player_id and (int(squad_player.get("contract", 0)) != loaned_player_contract or int(game.wage_budget) != wage_budget_before_loan_renewal):
+			_fail("loan contract renewal incorrectly changed the temporary contract or wage budget")
+			return
 	var loan_save_file := FileAccess.open("user://dynasty_save.json", FileAccess.READ)
 	if loan_save_file == null:
 		_fail("accepted loan was not saved")
