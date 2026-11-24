@@ -8,6 +8,7 @@ var ball_from := Vector2(0.35, 0.55)
 var ball_to := Vector2(0.68, 0.42)
 var ball_position := Vector2(0.5, 0.5)
 var event_cursor := 0
+var ball_move_progress := 1.0
 
 const GRASS_A := Color("#12613f")
 const GRASS_B := Color("#18764b")
@@ -20,21 +21,33 @@ func setup(data: Dictionary) -> void:
 	custom_minimum_size = Vector2(0, 330)
 	elapsed = 0.0
 	celebration = 0.0
+	ball_position = Vector2(0.5, 0.5)
+	ball_move_progress = 1.0
+	event_cursor = 0
 	queue_redraw()
 
 func _process(delta: float) -> void:
 	elapsed += delta
 	if celebration > 0.0:
 		celebration = maxf(0.0, celebration - delta)
-	var phase := fposmod(elapsed * 0.24, 1.0)
-	var arc := sin(phase * PI)
-	ball_position = Vector2(0.18 + phase * 0.64, 0.5 + sin(elapsed * 1.8) * 0.19 * arc)
 	var events: Array = report.get("events", [])
 	if event_cursor < events.size() and elapsed > float(event_cursor) * 0.11:
 		var e: Dictionary = events[event_cursor]
 		if str(e.get("type", "")) == "goal":
 			celebration = 2.0
+			ball_from = ball_position
+			var home_scored := str(e.get("team", "")) == str(report.get("home", ""))
+			ball_to = Vector2(0.92, 0.5) if home_scored else Vector2(0.08, 0.5)
+			ball_move_progress = 0.0
 		event_cursor += 1
+	if ball_move_progress < 1.0:
+		ball_move_progress = minf(1.0, ball_move_progress + delta * 1.8)
+		var eased := ball_move_progress * ball_move_progress * (3.0 - 2.0 * ball_move_progress)
+		ball_position = ball_from.lerp(ball_to, eased)
+	else:
+		var phase := fposmod(elapsed * 0.24, 1.0)
+		var arc := sin(phase * PI)
+		ball_position = Vector2(0.18 + phase * 0.64, 0.5 + sin(elapsed * 1.8) * 0.19 * arc)
 	queue_redraw()
 
 func _draw() -> void:
