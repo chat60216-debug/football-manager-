@@ -7,7 +7,7 @@ Football management career game for Android, built with Godot 4.4.1.
 - New career setup with country, division and real club selection where data is available.
 - Season 2026/27 club lists for the selectable leagues. Serie C uses the current three 20-team groups; the selected club determines its group.
 - Embedded real squad database generated from OpenFootballBase: 2026/27 squads for 10 competitions (Premier League, Championship, La Liga, Segunda, Serie A, Serie B, Bundesliga, 2. Bundesliga, Ligue 1 and Ligue 2).
-- Current imported dataset: 198 clubs and 5,732 player-squad entries. Real player names, positions and nationalities are imported; age, rating, potential, wages and market value are simulated by the game.
+- Current imported dataset: 198 clubs and 5,732 player-squad entries. Real player names, positions and nationalities are imported; age is imported when a day-precise Wikidata birth date exists, otherwise simulated. Ratings, potential, wages and market value are simulated by the game.
 - Where the upstream dataset does not publish complete squads (Serie C, English League One/Two and French Ligue 3), the game uses verified club lists and generated players, visibly labelled as generated.
 - Every player card has a unique generated avatar. These are stylized avatars, not photographs or likenesses of real footballers.
 - Full season fixture generation, league standings, matchday simulation and season history.
