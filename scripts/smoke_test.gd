@@ -95,6 +95,15 @@ func _run_smoke_test() -> void:
 		return
 	# Keep the later facility-upgrade regression independent from training costs.
 	game.cash = 1000000
+	game._team_talk("Concentrazione")
+	if int(game.pre_match_bonus) != 3 or int(game.team_talk_last_day) != int(game.day) or int(game.team_talk_last_season) != int(game.season):
+		_fail("pre-match team talk did not apply and record its tactical bonus")
+		return
+	var team_talk_bonus_before_repeat := int(game.pre_match_bonus)
+	game._team_talk("Carica")
+	if int(game.pre_match_bonus) != team_talk_bonus_before_repeat:
+		_fail("pre-match team talk could be repeated in the same matchweek")
+		return
 	var season_before_early_rollover := int(game.season)
 	game._new_season()
 	if int(game.season) != season_before_early_rollover:
@@ -333,6 +342,9 @@ func _run_smoke_test() -> void:
 	await process_frame
 	if game.match_report.is_empty():
 		_fail("league match did not create a report")
+		return
+	if int(game.pre_match_bonus) != 0:
+		_fail("pre-match tactical bonus was not consumed after the match")
 		return
 	var match_stats: Dictionary = game.match_report.get("stats", {})
 	if match_stats.is_empty():
