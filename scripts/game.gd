@@ -273,7 +273,7 @@ func _players_for_real_club(club: String) -> Array:
 	var rows: Array = clubs[chosen].get("players", [])
 	var base_rating := 67
 	if division in ["Premier League","Liga 1","Serie A","Ligue 1","Bundesliga 1"]: base_rating = 73
-	for i in range(rows.size()):
+	for i in range(mini(rows.size(), 30)):
 		var row: Dictionary = rows[i]
 		var raw_pos := str(row.get("position", ""))
 		var pos := "CC"
@@ -421,6 +421,15 @@ func _show_home() -> void:
 		_label(last_season_message, 17)
 	_label("Turno "+str(day+1)+" / "+str(fixtures.size())+" • "+str(league.size())+" squadre")
 	_label("Cassa: €"+_money(cash)+" • Budget ingaggi settimanale: €"+_money(wage_budget))
+	if not real_roster_db.is_empty():
+		var imported_players := 0
+		var imported_clubs := 0
+		for comp_data in real_roster_db.values():
+			imported_players += int(comp_data.get("player_count", 0))
+			imported_clubs += int(comp_data.get("club_count", 0))
+		_label("Database rose reali: " + str(imported_players) + " giocatori in " + str(imported_clubs) + " club")
+	else:
+		_label("Database rose reali non trovato: questa installazione userà le rose generate.")
 	_label("Rosa: "+str(players.size())+" calciatori • Media: "+str(_team_rating()))
 	_label("Mentalità: "+tactics.mentalita+" | Pressing: "+tactics.pressing+" | Costruzione: "+tactics.costruzione)
 	if day < fixtures.size():
@@ -737,6 +746,8 @@ func _show_squad() -> void:
 	_label("ROSA • GESTIONE CARTE",22)
 	_label("Trascina una carta sopra un'altra per scambiare i due giocatori nell'ordine della rosa. Le carte mostrano overall, ruolo, età e forma.")
 	_label("Media: "+str(_team_rating())+" • Ingaggi settimanali: €"+_money(_weekly_wages()))
+	var real_count := players.filter(func(p): return bool(p.get("real_player", false))).size()
+	_label("Dati rosa: " + str(real_count) + " giocatori reali importati • " + str(players.size() - real_count) + " generati")
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
