@@ -2839,7 +2839,35 @@ func _create_match_report(home: String, away: String, home_goals: int, away_goal
 	events.append({"minute":45,"text":"45′ — Fine primo tempo","type":"break"})
 	events.append({"minute":90,"text":"90′ — Triplice fischio","type":"end"})
 	events.sort_custom(func(a, b): return int(a.get("minute", 0)) < int(b.get("minute", 0)))
-	return {"home":home,"away":away,"home_goals":home_goals,"away_goals":away_goals,"events":events,"substitutions":substitutions,"played_ids":played_ids,"date_label":"Giornata " + str(day + 1)}
+	var match_stats := _create_match_statistics(home, away, home_goals, away_goals)
+	return {"home":home,"away":away,"home_goals":home_goals,"away_goals":away_goals,"events":events,"substitutions":substitutions,"played_ids":played_ids,"stats":match_stats,"date_label":"Giornata " + str(day + 1)}
+
+func _create_match_statistics(home: String, away: String, home_goals: int, away_goals: int) -> Dictionary:
+	var home_power := _club_power(home)
+	var away_power := _club_power(away)
+	if home == club_name:
+		home_power += 3
+	if away == club_name:
+		away_power += 3
+	var possession_home := clampi(roundi(50.0 + float(home_power - away_power) * 0.48 + randf_range(-7.0, 7.0)), 35, 65)
+	var shots_home := maxi(home_goals + 1, randi_range(7, 17) + int(float(home_power - away_power) / 9.0))
+	var shots_away := maxi(away_goals + 1, randi_range(7, 17) + int(float(away_power - home_power) / 9.0))
+	var target_home := clampi(home_goals + randi_range(1, 4), home_goals, shots_home)
+	var target_away := clampi(away_goals + randi_range(1, 4), away_goals, shots_away)
+	return {
+		"home_possession":possession_home,
+		"away_possession":100 - possession_home,
+		"home_shots":shots_home,
+		"away_shots":shots_away,
+		"home_shots_target":target_home,
+		"away_shots_target":target_away,
+		"home_corners":randi_range(2, 10),
+		"away_corners":randi_range(2, 10),
+		"home_fouls":randi_range(7, 18),
+		"away_fouls":randi_range(7, 18),
+		"home_pass_accuracy":randi_range(72, 94),
+		"away_pass_accuracy":randi_range(72, 94)
+	}
 
 func _show_match_report() -> void:
 	if match_report.is_empty():
@@ -2863,6 +2891,47 @@ func _show_match_report() -> void:
 	score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	score.add_theme_font_size_override("font_size", 25)
 	score_box.add_child(score)
+	var stats: Dictionary = match_report.get("stats", {})
+	if not stats.is_empty():
+		_label("STATISTICHE PARTITA", 19)
+		var stats_panel := PanelContainer.new()
+		content.add_child(stats_panel)
+		var stats_grid := GridContainer.new()
+		stats_grid.columns = 3
+		stats_grid.add_theme_constant_override("h_separation", 18)
+		stats_grid.add_theme_constant_override("v_separation", 7)
+		stats_panel.add_child(stats_grid)
+		var home_header := Label.new()
+		home_header.text = str(match_report.get("home", "CASA"))
+		home_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		home_header.add_theme_color_override("font_color", Color("#67e6f4"))
+		stats_grid.add_child(home_header)
+		var metric_header := Label.new()
+		metric_header.text = "METRICA"
+		metric_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		metric_header.add_theme_color_override("font_color", Color("#d6b66f"))
+		stats_grid.add_child(metric_header)
+		var away_header := Label.new()
+		away_header.text = str(match_report.get("away", "TRASFERTA"))
+		away_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		away_header.add_theme_color_override("font_color", Color("#67e6f4"))
+		stats_grid.add_child(away_header)
+		var stat_rows: Array = [
+			[str(stats.get("home_possession", 50)) + "%", "Possesso", str(stats.get("away_possession", 50)) + "%"],
+			[str(stats.get("home_shots", 0)), "Tiri", str(stats.get("away_shots", 0))],
+			[str(stats.get("home_shots_target", 0)), "Tiri in porta", str(stats.get("away_shots_target", 0))],
+			[str(stats.get("home_corners", 0)), "Calci d'angolo", str(stats.get("away_corners", 0))],
+			[str(stats.get("home_fouls", 0)), "Falli", str(stats.get("away_fouls", 0))],
+			[str(stats.get("home_pass_accuracy", 0)) + "%", "Precisione passaggi", str(stats.get("away_pass_accuracy", 0)) + "%"]
+		]
+		for stat_row in stat_rows:
+			for column in range(3):
+				var stat_label := Label.new()
+				stat_label.text = str(stat_row[column])
+				stat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				if column == 1:
+					stat_label.add_theme_color_override("font_color", Color("#9eafc1"))
+				stats_grid.add_child(stat_label)
 	var visual = preload("res://scripts/match_visualizer.gd").new()
 	visual.setup(match_report)
 	content.add_child(visual)
