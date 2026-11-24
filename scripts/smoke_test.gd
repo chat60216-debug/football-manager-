@@ -258,6 +258,15 @@ func _run_smoke_test() -> void:
 	damaged_save.store_string("{ damaged json")
 	damaged_save.close()
 	game._load_game()
+	var repaired_save := FileAccess.open("user://dynasty_save.json", FileAccess.READ)
+	if repaired_save == null:
+		_fail("backup recovery did not restore the primary save file")
+		return
+	var repaired_data = game._parse_save_text(repaired_save.get_as_text())
+	repaired_save.close()
+	if typeof(repaired_data) != TYPE_DICTIONARY:
+		_fail("primary save remained corrupted after backup recovery")
+		return
 	if game.players.size() < 11 or game.observed_players.size() != 1:
 		_fail("career save did not recover from the backup after JSON corruption")
 		return
