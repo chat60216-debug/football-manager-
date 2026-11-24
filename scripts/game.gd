@@ -66,6 +66,7 @@ var market_years: SpinBox
 var market_role: OptionButton
 var selected_market_player := -1
 var market_filter := "Tutti"
+var market_search_text := ""
 var ui_built := false
 
 func _ready() -> void:
@@ -434,6 +435,7 @@ func _new_career() -> void:
 	european_competitions.clear()
 	qualified_european_comp = ""
 	market_filter = "Tutti"
+	market_search_text = ""
 	tactics = {"mentalita":"Equilibrata","pressing":"Medio","costruzione":"Mista","linea":"Media","sostituzioni":"Equilibrate"}
 	formation = "4-3-3"
 	lineup_ids.clear()
@@ -1521,6 +1523,29 @@ func _show_market() -> void:
 	scout_count.add_theme_font_size_override("font_size", 20)
 	scout_count.add_theme_color_override("font_color", Color("#e5bd69"))
 	scout_row.add_child(scout_count)
+	var search_row := HBoxContainer.new()
+	search_row.add_theme_constant_override("separation", 8)
+	var search_input := LineEdit.new()
+	search_input.placeholder_text = "Cerca nome, club, ruolo o nazionalità..."
+	search_input.text = market_search_text
+	search_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	search_row.add_child(search_input)
+	var search_button := Button.new()
+	search_button.text = "CERCA"
+	search_button.pressed.connect(func():
+		market_search_text = search_input.text.strip_edges().to_lower()
+		_show_market()
+	)
+	search_row.add_child(search_button)
+	var clear_search := Button.new()
+	clear_search.text = "✕"
+	clear_search.tooltip_text = "Cancella ricerca"
+	clear_search.pressed.connect(func():
+		market_search_text = ""
+		_show_market()
+	)
+	search_row.add_child(clear_search)
+	content.add_child(search_row)
 	var filter := OptionButton.new()
 	var filter_options := ["Tutti","Calciatori reali","Giovani U21","Occasioni sotto €2M","Top player OVR 75+"]
 	for option in filter_options:
@@ -1537,6 +1562,7 @@ func _show_market() -> void:
 		var age := int(p.get("age", 30))
 		var value := int(p.get("value", 0))
 		var rating := int(p.get("rating", 0))
+		if not _market_search_matches(p, market_search_text): continue
 		if market_filter == "Calciatori reali" and not bool(p.get("real_player", false)): continue
 		if market_filter == "Giovani U21" and age > 21: continue
 		if market_filter == "Occasioni sotto €2M" and value >= 2000000: continue
@@ -1580,6 +1606,13 @@ func _show_market() -> void:
 		shown += 1
 	if shown == 0:
 		_label("Nessun giocatore corrisponde al filtro. Cambia selezione.")
+
+func _market_search_matches(player: Dictionary, query: String) -> bool:
+	var normalized_query := query.strip_edges().to_lower()
+	if normalized_query == "":
+		return true
+	var searchable := str(player.get("name", "")) + " " + str(player.get("club", "")) + " " + str(player.get("position", "")) + " " + str(player.get("nationality", ""))
+	return searchable.to_lower().contains(normalized_query)
 
 func _is_player_observed(player_id: int) -> bool:
 	for prospect in observed_players:
