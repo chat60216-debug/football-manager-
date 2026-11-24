@@ -15,6 +15,29 @@ func _run_smoke_test() -> void:
 	var game = packed.instantiate()
 	root.add_child(game)
 	await process_frame
+	var portrait_script = load("res://scripts/player_portrait.gd")
+	var crest_script = load("res://scripts/club_crest.gd")
+	var visualizer_script = load("res://scripts/match_visualizer.gd")
+	if portrait_script == null or crest_script == null or visualizer_script == null:
+		_fail("one or more visual asset scripts failed to load")
+		return
+	var portrait = portrait_script.new()
+	portrait.seed_value = 24680
+	portrait.custom_minimum_size = Vector2(120, 144)
+	root.add_child(portrait)
+	var crest = crest_script.new()
+	crest.setup("AC NOVA MILANO")
+	crest.custom_minimum_size = Vector2(80, 90)
+	root.add_child(crest)
+	var second_crest = crest_script.new()
+	second_crest.setup("AC NOVA MILANO")
+	if int(crest.seed_value) != int(second_crest.seed_value):
+		_fail("club crest generation is not deterministic for the same club")
+		return
+	await process_frame
+	portrait.queue_free()
+	crest.queue_free()
+	second_crest.queue_free()
 	if game.setup_real_club == null or game.setup_division == null:
 		_fail("career setup did not initialize")
 		return
