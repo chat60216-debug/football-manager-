@@ -31,7 +31,11 @@ jobs:
             echo "sdkmanager not found under $ANDROID_HOME/cmdline-tools"
             exit 1
           fi
+          # sdkmanager exits after consuming the license answers; yes may then
+          # receive SIGPIPE. Do not let pipefail treat that expected close as failure.
+          set +o pipefail
           yes | "$SDKMANAGER" --licenses >/dev/null
+          set -o pipefail
           "$SDKMANAGER" --install \
             "platform-tools" \
             "platforms;android-34" \
