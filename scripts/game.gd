@@ -2629,6 +2629,12 @@ func _create_match_report(home: String, away: String, home_goals: int, away_goal
 	for p in players:
 		if played_ids.has(int(p.get("id", -1))) and ["ATT", "AD", "AS", "COC"].has(str(p.get("position", ""))):
 			user_attackers.append(p)
+	# A thin or emergency squad may have no natural attacker in the XI.
+	# Never create a goal event without a player identity in that case.
+	if user_attackers.is_empty():
+		for p in players:
+			if played_ids.has(int(p.get("id", -1))):
+				user_attackers.append(p)
 	for i in range(home_goals + away_goals):
 		var minute := randi_range(2, 90)
 		var is_home := i < home_goals
