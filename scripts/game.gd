@@ -24,7 +24,7 @@ var cup_round := 0
 var cup_teams: Array = []
 var cup_winner := ""
 var european_status := "Non qualificato"
-var tactics := {"mentalita":"Equilibrata","pressing":"Medio","costruzione":"Mista","linea":"Media"}
+var tactics := {"mentalita":"Equilibrata","pressing":"Medio","costruzione":"Mista","linea":"Media","sostituzioni":"Equilibrate"}
 var formation := "4-3-3"
 var lineup_ids: Array = []
 var training_focus := "Equilibrio"
@@ -959,7 +959,8 @@ func _play_cup_round() -> void:
 		cup_winner = str(next[0])
 		if cup_winner == club_name:
 			cash += 1500000
-			european_status = "Qualificato alla UEFA Conference League"
+			qualified_european_comp = "UEFA Europa League"
+			european_status = "Qualificato alla UEFA Europa League"
 	else:
 		cup_teams = next
 		if user_won:
@@ -1195,6 +1196,7 @@ func _show_tactics() -> void:
 	_add_option("Pressing",["Basso","Medio","Alto"],"pressing")
 	_add_option("Costruzione",["Corta","Mista","Diretta"],"costruzione")
 	_add_option("Linea difensiva",["Bassa","Media","Alta"],"linea")
+	_add_option("Piano sostituzioni",["Anticipate","Equilibrate","Tardive"],"sostituzioni")
 	_button("Salva tattiche",func(): _save_game(); _show_home())
 
 func _add_option(caption: String, options: Array, key: String) -> void:
@@ -1404,10 +1406,14 @@ func _simulate_substitutions() -> Array:
 	starters.sort_custom(func(a, b): return int(a.get("fitness", 100)) < int(b.get("fitness", 100)))
 	bench.sort_custom(func(a, b): return int(a.get("rating", 0)) > int(b.get("rating", 0)))
 	var count := mini(3, mini(starters.size(), bench.size()))
+	var timing: Array = [60, 70, 80]
+	match str(tactics.get("sostituzioni", "Equilibrate")):
+		"Anticipate": timing = [50, 60, 70]
+		"Tardive": timing = [70, 78, 85]
 	for i in range(count):
 		var outgoing: Dictionary = starters[i]
 		var incoming: Dictionary = bench[i]
-		result.append({"minute":60 + i * 10 + randi_range(0, 4),"out_id":int(outgoing.get("id", -1)),"in_id":int(incoming.get("id", -1)),"out_name":str(outgoing.get("name", "Giocatore")),"in_name":str(incoming.get("name", "Giocatore"))})
+		result.append({"minute":int(timing[i]) + randi_range(0, 3),"out_id":int(outgoing.get("id", -1)),"in_id":int(incoming.get("id", -1)),"out_name":str(outgoing.get("name", "Giocatore")),"in_name":str(incoming.get("name", "Giocatore"))})
 	return result
 
 func _create_match_report(home: String, away: String, home_goals: int, away_goals: int, substitutions: Array) -> Dictionary:
@@ -1427,6 +1433,9 @@ func _create_match_report(home: String, away: String, home_goals: int, away_goal
 			scorer_name = str(candidates.pick_random().get("name", "Attaccante"))
 		var team_name := home if is_home else away
 		events.append({"minute":minute,"text":"GOL! " + team_name + " — " + scorer_name + " (" + str(minute) + "′)","type":"goal"})
+	for minute in range(1, 91):
+		var commentary := ["Azione manovrata a centrocampo","La squadra prova ad allargare il gioco","Pressione sul portatore di palla","Possesso palla e ricerca degli spazi","Lancio in profondità, difesa attenta","Duello aereo nella zona centrale","La squadra guadagna metri","Cross dalla fascia, respinta della difesa"].pick_random()
+		events.append({"minute":minute,"text":str(minute) + "′ — " + commentary,"type":"commentary"})
 	for sub in substitutions:
 		events.append({"minute":int(sub.get("minute", 60)),"text":"Sostituzione " + home + ": " + str(sub.get("in_name", "")) + " per " + str(sub.get("out_name", "")),"type":"sub"})
 	for i in range(randi_range(1, 3)):
@@ -1633,6 +1642,7 @@ func _group_standings(group: Array, comp: Dictionary) -> Array:
 
 func _play_european_round(key: String) -> void:
 	if not european_competitions.has(key): return
+	match_report.clear()
 	var comp: Dictionary = european_competitions[key]
 	var phase := str(comp.get("phase", "groups"))
 	if phase == "groups":
@@ -1682,7 +1692,7 @@ func _play_european_round(key: String) -> void:
 				board_confidence = mini(100, board_confidence + 20)
 				european_status = "CAMPIONE D'EUROPA: " + key
 	_save_game()
-	if not match_report.is_empty() and match_report.get("home", "") == club_name or match_report.get("away", "") == club_name:
+	if not match_report.is_empty() and (match_report.get("home", "") == club_name or match_report.get("away", "") == club_name):
 		_show_match_report()
 	else:
 		_show_uefa()
