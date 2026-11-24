@@ -476,7 +476,20 @@ func _new_career() -> void:
 	cup_winner = ""
 	european_status = "Non qualificato"
 	_save_game()
+	_refresh_save_backup()
 	_show_tab("Home")
+
+func _refresh_save_backup() -> void:
+	var source := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if source == null:
+		return
+	var save_text := source.get_as_text()
+	source.close()
+	var backup := FileAccess.open(SAVE_PATH + ".bak", FileAccess.WRITE)
+	if backup != null:
+		backup.store_string(save_text)
+		backup.flush()
+		backup.close()
 
 func _load_real_roster_database() -> void:
 	real_roster_db.clear()
@@ -2395,6 +2408,7 @@ func _load_game() -> void:
 		return
 	navigation.visible = true
 	var parsed: Variant = null
+	var recovered_from_backup := false
 	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
 	if file != null:
 		parsed = JSON.parse_string(file.get_as_text())
@@ -2404,8 +2418,8 @@ func _load_game() -> void:
 		if backup_file != null:
 			parsed = JSON.parse_string(backup_file.get_as_text())
 			backup_file.close()
-			if typeof(parsed) == TYPE_DICTIONARY and is_instance_valid(status_label):
-				status_label.text = "Salvataggio principale danneggiato: recuperata la copia di sicurezza."
+			if typeof(parsed) == TYPE_DICTIONARY:
+				recovered_from_backup = true
 	if typeof(parsed) != TYPE_DICTIONARY:
 		if is_instance_valid(status_label):
 			status_label.text = "Salvataggio non leggibile: avvia una nuova carriera."
@@ -2462,7 +2476,7 @@ func _load_game() -> void:
 		_generate_league()
 		_save_game()
 	_show_tab("Home")
-	status_label.text = "Carriera caricata."
+	status_label.text = "Carriera recuperata dalla copia di sicurezza." if recovered_from_backup else "Carriera caricata."
 
 func _simulate_substitutions() -> Array:
 	var result: Array = []
