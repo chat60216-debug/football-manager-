@@ -195,13 +195,13 @@ func _build_shell() -> void:
 	side_box.add_theme_constant_override("separation", 12)
 	sidebar.add_child(side_box)
 	var brand := Label.new()
-	brand.text = "DYNASTY"
+	brand.text = "DYNASTY  FC"
 	brand.add_theme_font_size_override("font_size", 26)
 	brand.add_theme_color_override("font_color", Color("#e5bd69"))
 	brand.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	side_box.add_child(brand)
 	var edition := Label.new()
-	edition.text = "FOOTBALL CAREER"
+	edition.text = "MANAGER  •  ULTIMATE CLUB"
 	edition.add_theme_font_size_override("font_size", 10)
 	edition.add_theme_color_override("font_color", Color("#8295aa"))
 	edition.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -220,8 +220,8 @@ func _build_shell() -> void:
 	navigation_scroll.add_child(navigation_items)
 	for tab in ["Home","Rosa","Formazione","Tattiche","Allenamento","Calendario","Classifica","Mercato","Coppe","UEFA","Club","Giovanili","Staff","Statistiche","Società"]:
 		var button := Button.new()
-		button.text = tab
-		button.custom_minimum_size = Vector2(0, 39)
+		button.text = "  " + tab.to_upper()
+		button.custom_minimum_size = Vector2(0, 43)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.pressed.connect(func(): _show_tab(tab))
 		navigation_items.add_child(button)
@@ -802,89 +802,122 @@ func _show_tab(tab: String) -> void:
 
 func _show_home() -> void:
 	_clear_content()
+	# Broadcast-style club identity header.
 	var hero := PanelContainer.new()
-	hero.custom_minimum_size = Vector2(0, 142)
+	hero.custom_minimum_size = Vector2(0, 176)
+	var hero_style := StyleBoxFlat.new()
+	hero_style.bg_color = Color("#102844")
+	hero_style.border_color = Color("#35c5e5")
+	hero_style.set_border_width_all(2)
+	hero_style.set_corner_radius_all(18)
+	hero_style.content_margin_left = 18
+	hero_style.content_margin_right = 18
+	hero_style.content_margin_top = 14
+	hero_style.content_margin_bottom = 14
+	hero.add_theme_stylebox_override("panel", hero_style)
 	content.add_child(hero)
 	var hero_row := HBoxContainer.new()
-	hero_row.add_theme_constant_override("separation", 22)
+	hero_row.add_theme_constant_override("separation", 18)
 	hero.add_child(hero_row)
 	var club_crest = preload("res://scripts/club_crest.gd").new()
-	club_crest.custom_minimum_size = Vector2(112, 112)
+	club_crest.custom_minimum_size = Vector2(118, 118)
 	club_crest.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	club_crest.setup(club_name)
 	hero_row.add_child(club_crest)
-	var hero_info := VBoxContainer.new()
-	hero_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hero_row.add_child(hero_info)
-	var kicker := Label.new()
-	kicker.text = "DYNASTY  /  CENTRO DIREZIONALE"
-	kicker.add_theme_font_size_override("font_size", 11)
-	kicker.add_theme_color_override("font_color", Color("#d6b66f"))
-	hero_info.add_child(kicker)
+	var identity := VBoxContainer.new()
+	identity.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	identity.alignment = BoxContainer.ALIGNMENT_CENTER
+	identity.add_theme_constant_override("separation", 4)
+	hero_row.add_child(identity)
+	var eyebrow := Label.new()
+	eyebrow.text = "DYNASTY NETWORK   /   CLUB CHANNEL"
+	eyebrow.add_theme_font_size_override("font_size", 10)
+	eyebrow.add_theme_color_override("font_color", Color("#70dff2"))
+	identity.add_child(eyebrow)
 	var title := Label.new()
 	title.text = club_name.to_upper()
-	title.add_theme_font_size_override("font_size", 30)
-	title.add_theme_color_override("font_color", Color("#f3f5f8"))
+	title.add_theme_font_size_override("font_size", 29)
+	title.add_theme_color_override("font_color", Color("#ffffff"))
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hero_info.add_child(title)
-	var season_info := Label.new()
-	season_info.text = division + "  •  " + str(season) + "/" + str(season + 1) + "  •  GIORNATA " + str(mini(day + 1, fixtures.size()))
-	season_info.add_theme_color_override("font_color", Color("#9eafc1"))
-	hero_info.add_child(season_info)
-	var hero_badge := PanelContainer.new()
-	hero_badge.custom_minimum_size = Vector2(180, 90)
-	hero_row.add_child(hero_badge)
+	identity.add_child(title)
+	var meta := Label.new()
+	meta.text = country.to_upper() + "  •  " + division + "  •  STAGIONE " + str(season) + "/" + str(season + 1)
+	meta.add_theme_font_size_override("font_size", 12)
+	meta.add_theme_color_override("font_color", Color("#b2c8dc"))
+	identity.add_child(meta)
+	var manager := Label.new()
+	manager.text = "MANAGER  /  " + manager_name.to_upper()
+	manager.add_theme_font_size_override("font_size", 11)
+	manager.add_theme_color_override("font_color", Color("#f1c76b"))
+	identity.add_child(manager)
+	var badge := PanelContainer.new()
+	badge.custom_minimum_size = Vector2(116, 100)
+	var badge_style := StyleBoxFlat.new()
+	badge_style.bg_color = Color("#07182a")
+	badge_style.border_color = Color("#315c7e")
+	badge_style.set_border_width_all(1)
+	badge_style.set_corner_radius_all(14)
+	badge.add_theme_stylebox_override("panel", badge_style)
+	hero_row.add_child(badge)
 	var badge_box := VBoxContainer.new()
 	badge_box.alignment = BoxContainer.ALIGNMENT_CENTER
-	hero_badge.add_child(badge_box)
-	var manager_label := Label.new()
-	manager_label.text = "ALLENATORE"
-	manager_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	manager_label.add_theme_font_size_override("font_size", 10)
-	manager_label.add_theme_color_override("font_color", Color("#d6b66f"))
-	badge_box.add_child(manager_label)
-	var manager_value := Label.new()
-	manager_value.text = manager_name
-	manager_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	manager_value.add_theme_font_size_override("font_size", 19)
-	badge_box.add_child(manager_value)
-	if last_season_message != "":
-		_label(last_season_message, 14)
+	badge.add_child(badge_box)
+	var rating := Label.new()
+	rating.text = str(_team_rating())
+	rating.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	rating.add_theme_font_size_override("font_size", 34)
+	rating.add_theme_color_override("font_color", Color("#70dff2"))
+	badge_box.add_child(rating)
+	var rating_caption := Label.new()
+	rating_caption.text = "SQUAD OVR"
+	rating_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	rating_caption.add_theme_font_size_override("font_size", 10)
+	rating_caption.add_theme_color_override("font_color", Color("#a8bed3"))
+	badge_box.add_child(rating_caption)
+
+	# Compact performance dashboard.
 	var stats := HBoxContainer.new()
-	stats.add_theme_constant_override("separation", 12)
+	stats.add_theme_constant_override("separation", 10)
 	content.add_child(stats)
 	var stat_values := [
-		["€" + _money(cash), "BILANCIO DISPONIBILE"],
-		[str(players.size()), "CALCIATORI IN ROSA"],
-		[str(_team_rating()) + " OVR", "VALORE SQUADRA"]
+		["€" + _money(cash), "BUDGET DISPONIBILE", Color("#79d9a5")],
+		[str(players.size()), "ROSA PRIMA SQUADRA", Color("#70dff2")],
+		[str(day) + "/" + str(fixtures.size()), "GIORNATE GIOCATE", Color("#f1c76b")],
+		[str(board_confidence) + "%", "FIDUCIA DIRIGENZA", Color("#c5a5ff")]
 	]
 	for item in stat_values:
 		var tile := PanelContainer.new()
 		tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		tile.custom_minimum_size = Vector2(0, 74)
+		tile.custom_minimum_size = Vector2(0, 76)
+		var tile_style := StyleBoxFlat.new()
+		tile_style.bg_color = Color("#0c1d31")
+		tile_style.border_color = Color("#294967")
+		tile_style.set_border_width_all(1)
+		tile_style.set_corner_radius_all(13)
+		tile.add_theme_stylebox_override("panel", tile_style)
 		stats.add_child(tile)
 		var tile_box := VBoxContainer.new()
 		tile_box.alignment = BoxContainer.ALIGNMENT_CENTER
 		tile.add_child(tile_box)
 		var value := Label.new()
-		value.text = item[0]
+		value.text = str(item[0])
 		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		value.add_theme_font_size_override("font_size", 21)
-		value.add_theme_color_override("font_color", Color("#e5bd69"))
+		value.add_theme_color_override("font_color", item[2])
 		tile_box.add_child(value)
 		var caption := Label.new()
-		caption.text = item[1]
+		caption.text = str(item[1])
 		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		caption.add_theme_font_size_override("font_size", 10)
-		caption.add_theme_color_override("font_color", Color("#8da2b9"))
+		caption.add_theme_font_size_override("font_size", 9)
+		caption.add_theme_color_override("font_color", Color("#91a9c0"))
 		tile_box.add_child(caption)
+
 	var columns := HBoxContainer.new()
-	columns.add_theme_constant_override("separation", 14)
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	columns.add_theme_constant_override("separation", 12)
 	content.add_child(columns)
 	var left := VBoxContainer.new()
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.size_flags_stretch_ratio = 1.25
+	left.size_flags_stretch_ratio = 1.35
 	left.add_theme_constant_override("separation", 10)
 	columns.add_child(left)
 	var right := VBoxContainer.new()
@@ -892,37 +925,64 @@ func _show_home() -> void:
 	right.size_flags_stretch_ratio = 1.0
 	right.add_theme_constant_override("separation", 10)
 	columns.add_child(right)
+
+	# Main event card, styled like a live football broadcast.
 	var fixture_card := PanelContainer.new()
+	var fixture_style := StyleBoxFlat.new()
+	fixture_style.bg_color = Color("#0d2138")
+	fixture_style.border_color = Color("#3a718e")
+	fixture_style.set_border_width_all(1)
+	fixture_style.set_corner_radius_all(16)
+	fixture_card.add_theme_stylebox_override("panel", fixture_style)
 	left.add_child(fixture_card)
 	var fixture_box := VBoxContainer.new()
+	fixture_box.add_theme_constant_override("separation", 9)
 	fixture_card.add_child(fixture_box)
-	var fixture_heading := Label.new()
-	fixture_heading.text = "PROSSIMA PARTITA"
-	fixture_heading.add_theme_font_size_override("font_size", 12)
-	fixture_heading.add_theme_color_override("font_color", Color("#d6b66f"))
-	fixture_box.add_child(fixture_heading)
+	var heading := Label.new()
+	heading.text = "MATCHDAY  /  LIVE CENTRE"
+	heading.add_theme_font_size_override("font_size", 12)
+	heading.add_theme_color_override("font_color", Color("#70dff2"))
+	fixture_box.add_child(heading)
 	if day < fixtures.size():
 		var fixture := _find_fixture(club_name)
 		if not fixture.is_empty():
 			var opponent := str(fixture.get("away", "") if str(fixture.get("home", "")) == club_name else fixture.get("home", ""))
-			var match_tag := Label.new()
-			match_tag.text = ("DERBY  •  " if _is_derby(opponent) else "CAMPIONATO  •  ") + ("CASA" if str(fixture.get("home", "")) == club_name else "TRASFERTA")
-			match_tag.add_theme_color_override("font_color", Color("#e5bd69") if _is_derby(opponent) else Color("#8fa9c4"))
-			fixture_box.add_child(match_tag)
+			var match_type := Label.new()
+			match_type.text = ("DERBY   •   " if _is_derby(opponent) else "CAMPIONATO   •   ") + ("CASA" if str(fixture.get("home", "")) == club_name else "TRASFERTA")
+			match_type.add_theme_font_size_override("font_size", 10)
+			match_type.add_theme_color_override("font_color", Color("#f1c76b") if _is_derby(opponent) else Color("#9bb5cc"))
+			fixture_box.add_child(match_type)
 			var versus := Label.new()
 			versus.text = str(fixture.get("home", "")).to_upper() + "   VS   " + str(fixture.get("away", "")).to_upper()
 			versus.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			versus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			versus.add_theme_font_size_override("font_size", 22)
+			versus.add_theme_font_size_override("font_size", 23)
+			versus.add_theme_color_override("font_color", Color("#ffffff"))
 			fixture_box.add_child(versus)
+			var match_hint := Label.new()
+			match_hint.text = "Prepara undici, piano gara e sostituzioni prima del calcio d'inizio."
+			match_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			match_hint.add_theme_font_size_override("font_size", 11)
+			match_hint.add_theme_color_override("font_color", Color("#a6bbcf"))
+			fixture_box.add_child(match_hint)
+			var actions := HBoxContainer.new()
+			actions.add_theme_constant_override("separation", 8)
+			fixture_box.add_child(actions)
+			var tactics_button := Button.new()
+			tactics_button.text = "GESTISCI FORMAZIONE"
+			tactics_button.custom_minimum_size = Vector2(0, 46)
+			tactics_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			tactics_button.pressed.connect(_show_formation)
+			actions.add_child(tactics_button)
 			var play := Button.new()
-			play.text = "APRI MATCHDAY  →"
-			play.custom_minimum_size = Vector2(0, 48)
+			play.text = "PREPARA PARTITA  →"
+			play.custom_minimum_size = Vector2(0, 46)
+			play.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			play.pressed.connect(_show_matchday_presentation)
-			fixture_box.add_child(play)
+			actions.add_child(play)
 		else:
 			var rest := Label.new()
-			rest.text = "Turno di riposo: recupera energie e prepara la squadra."
+			rest.text = "Turno di riposo. Programma recupero e allenamento."
 			fixture_box.add_child(rest)
 			var advance := Button.new()
 			advance.text = "AVANZA AL PROSSIMO TURNO"
@@ -930,84 +990,102 @@ func _show_home() -> void:
 			fixture_box.add_child(advance)
 	else:
 		var finished := Label.new()
-		finished.text = "Campionato terminato."
+		finished.text = "Campionato terminato. È il momento di pianificare la nuova stagione."
 		fixture_box.add_child(finished)
 		var next_season := Button.new()
 		next_season.text = "AVANZA ALLA NUOVA STAGIONE"
 		next_season.pressed.connect(_new_season)
 		fixture_box.add_child(next_season)
-	var quick := PanelContainer.new()
-	left.add_child(quick)
-	var quick_box := VBoxContainer.new()
-	quick.add_child(quick_box)
-	var quick_title := Label.new()
-	quick_title.text = "GESTIONE RAPIDA"
-	quick_title.add_theme_color_override("font_color", Color("#d6b66f"))
-	quick_box.add_child(quick_title)
-	var quick_row := HBoxContainer.new()
-	quick_box.add_child(quick_row)
-	for action in [["FORMAZIONE", _show_formation], ["MERCATO", _show_market], ["ALLENAMENTO", _show_tactics]]:
+
+	# Shortcuts designed as game-mode tiles.
+	var mode_card := PanelContainer.new()
+	left.add_child(mode_card)
+	var mode_box := VBoxContainer.new()
+	mode_card.add_child(mode_box)
+	var mode_title := Label.new()
+	mode_title.text = "CENTRO OPERATIVO"
+	mode_title.add_theme_font_size_override("font_size", 12)
+	mode_title.add_theme_color_override("font_color", Color("#70dff2"))
+	mode_box.add_child(mode_title)
+	var mode_grid := GridContainer.new()
+	mode_grid.columns = 2
+	mode_grid.add_theme_constant_override("h_separation", 8)
+	mode_grid.add_theme_constant_override("v_separation", 8)
+	mode_box.add_child(mode_grid)
+	for action in [["ROSA", _show_squad], ["TATTICHE", _show_tactics], ["MERCATO", _show_market], ["ALLENAMENTO", _show_training]]:
 		var action_button := Button.new()
-		action_button.text = action[0]
-		action_button.custom_minimum_size = Vector2(0, 44)
+		action_button.text = str(action[0]) + "   ↗"
+		action_button.custom_minimum_size = Vector2(0, 46)
 		action_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var action_callback: Callable = action[1]
 		action_button.pressed.connect(action_callback)
-		quick_row.add_child(action_button)
+		mode_grid.add_child(action_button)
+
 	var table_card := PanelContainer.new()
 	right.add_child(table_card)
 	var table_box := VBoxContainer.new()
 	table_card.add_child(table_box)
 	var table_title := Label.new()
-	table_title.text = "CLASSIFICA  /  TOP 5"
-	table_title.add_theme_color_override("font_color", Color("#d6b66f"))
+	table_title.text = "LEAGUE TABLE  /  TOP 5"
+	table_title.add_theme_color_override("font_color", Color("#70dff2"))
 	table_box.add_child(table_title)
 	var standings: Array = league.duplicate(true)
 	standings.sort_custom(func(a, b): return int(a.get("pts", 0)) > int(b.get("pts", 0)) or (int(a.get("pts", 0)) == int(b.get("pts", 0)) and int(a.get("gf", 0)) - int(a.get("ga", 0)) > int(b.get("gf", 0)) - int(b.get("ga", 0))))
 	for i in range(mini(5, standings.size())):
-		var row := Label.new()
 		var entry: Dictionary = standings[i]
-		row.text = str(i + 1) + "   " + str(entry.get("name", "")) + "   " + str(entry.get("pts", 0)) + " pt"
-		row.add_theme_font_size_override("font_size", 13)
-		if str(entry.get("name", "")) == club_name:
-			row.add_theme_color_override("font_color", Color("#e5bd69"))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
 		table_box.add_child(row)
+		var place := Label.new()
+		place.text = "%02d" % (i + 1)
+		place.custom_minimum_size = Vector2(25, 20)
+		place.add_theme_color_override("font_color", Color("#f1c76b") if i < 4 else Color("#9bb5cc"))
+		row.add_child(place)
+		var team := Label.new()
+		team.text = str(entry.get("name", ""))
+		team.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		team.add_theme_color_override("font_color", Color("#70dff2") if str(entry.get("name", "")) == club_name else Color("#dce8f4"))
+		row.add_child(team)
+		var points := Label.new()
+		points.text = str(entry.get("pts", 0)) + " pt"
+		points.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		row.add_child(points)
 	var news_card := PanelContainer.new()
 	right.add_child(news_card)
 	var news_box := VBoxContainer.new()
 	news_card.add_child(news_box)
 	var news_title := Label.new()
-	news_title.text = "NOTIZIE DAL CLUB"
-	news_title.add_theme_color_override("font_color", Color("#d6b66f"))
+	news_title.text = "DYNASTY NEWS"
+	news_title.add_theme_color_override("font_color", Color("#70dff2"))
 	news_box.add_child(news_title)
 	for news in _club_news().slice(0, 3):
 		var news_label := Label.new()
-		news_label.text = "•  " + str(news)
+		news_label.text = "▪  " + str(news)
 		news_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		news_label.add_theme_font_size_override("font_size", 12)
+		news_label.add_theme_font_size_override("font_size", 11)
 		news_box.add_child(news_label)
-	var recent_results := _last_results_for_club(5)
+	var recent_results := _last_results_for_club(4)
 	if not recent_results.is_empty():
 		var results_card := PanelContainer.new()
 		right.add_child(results_card)
 		var results_box := VBoxContainer.new()
 		results_card.add_child(results_box)
 		var results_title := Label.new()
-		results_title.text = "ULTIMI RISULTATI"
-		results_title.add_theme_color_override("font_color", Color("#d6b66f"))
+		results_title.text = "ULTIME PARTITE"
+		results_title.add_theme_color_override("font_color", Color("#70dff2"))
 		results_box.add_child(results_title)
 		for result in recent_results:
 			var is_home := str(result.get("home", "")) == club_name
 			var opponent := str(result.get("away", "") if is_home else result.get("home", ""))
-			var home_goals := int(result.get("hg", 0))
-			var away_goals := int(result.get("ag", 0))
-			var user_goals := home_goals if is_home else away_goals
-			var opponent_goals := away_goals if is_home else home_goals
-			var outcome := "VITTORIA" if user_goals > opponent_goals else "PAREGGIO" if user_goals == opponent_goals else "SCONFITTA"
+			var hg := int(result.get("hg", 0))
+			var ag := int(result.get("ag", 0))
+			var own := hg if is_home else ag
+			var against := ag if is_home else hg
+			var outcome := "V" if own > against else "N" if own == against else "P"
 			var result_line := Label.new()
-			result_line.text = "G" + str(int(result.get("day", 0)) + 1) + "  •  " + opponent + "  •  " + str(home_goals) + "–" + str(away_goals) + "  •  " + outcome
+			result_line.text = outcome + "   " + opponent + "     " + str(hg) + " – " + str(ag)
 			result_line.add_theme_font_size_override("font_size", 11)
-			result_line.add_theme_color_override("font_color", Color("#83d6a5") if outcome == "VITTORIA" else Color("#e5bd69") if outcome == "PAREGGIO" else Color("#ff8a8a"))
+			result_line.add_theme_color_override("font_color", Color("#79d9a5") if outcome == "V" else Color("#f1c76b") if outcome == "N" else Color("#ff8b93"))
 			results_box.add_child(result_line)
 	if not match_report.is_empty():
 		var report_button := Button.new()
