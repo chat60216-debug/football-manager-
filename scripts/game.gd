@@ -2947,7 +2947,11 @@ func _load_game() -> void:
 		_generate_league()
 		_save_game()
 	_show_tab("Home")
-	status_label.text = "Carriera recuperata dalla copia di sicurezza." if recovered_from_backup else "Carriera caricata."
+	if recovered_from_backup:
+		_save_game()
+		status_label.text = "Carriera recuperata e salvataggio principale ripristinato."
+	else:
+		status_label.text = "Carriera caricata."
 
 func _simulate_substitutions() -> Array:
 	var result: Array = []
