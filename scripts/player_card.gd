@@ -10,7 +10,7 @@ var player: Dictionary = {}
 
 const GOLD := Color("#72dff2")
 const ICE := Color("#8ce5ff")
-const MUTED := Color("#91a4ba")
+const MUTED := Color("#9bb3c9")
 
 func _make_label(value: String, font_size: int, color: Color, centered := false) -> Label:
 	var label := Label.new()
@@ -70,7 +70,7 @@ func _progress_row(parent: VBoxContainer, caption: String, value: int, tint: Col
 
 func setup(data: Dictionary) -> void:
 	player = data
-	custom_minimum_size = Vector2(250, 382)
+	custom_minimum_size = Vector2(264, 404)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var starter := bool(player.get("starting_xi", false))
 	var captain := bool(player.get("captain", false))
@@ -91,11 +91,11 @@ func setup(data: Dictionary) -> void:
 	add_theme_stylebox_override("panel", shell)
 
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 5)
+	box.add_theme_constant_override("separation", 7)
 	add_child(box)
 
 	var hero := PanelContainer.new()
-	hero.custom_minimum_size = Vector2(0, 174)
+	hero.custom_minimum_size = Vector2(0, 188)
 	var hero_style := StyleBoxFlat.new()
 	hero_style.bg_color = Color("#071426")
 	hero_style.border_color = Color("#315c7e")
@@ -104,7 +104,7 @@ func setup(data: Dictionary) -> void:
 	hero.add_theme_stylebox_override("panel", hero_style)
 	box.add_child(hero)
 	var portrait = preload("res://scripts/player_portrait.gd").new()
-	portrait.custom_minimum_size = Vector2(0, 170)
+	portrait.custom_minimum_size = Vector2(0, 184)
 	portrait.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	portrait.seed_value = int(player.get("portrait_seed", player.get("id", 1)))
 	portrait.player_name = str(player.get("name", "Player"))
@@ -114,7 +114,7 @@ func setup(data: Dictionary) -> void:
 	identity.add_theme_constant_override("separation", 5)
 	box.add_child(identity)
 	var rating_value := int(player.get("rating", 0))
-	var rating := _make_label(str(rating_value), 28, GOLD if rating_value >= 80 else ICE if rating_value >= 68 else Color("#d1dbe5"))
+	var rating := _make_label(str(rating_value), 32, GOLD if rating_value >= 80 else ICE if rating_value >= 68 else Color("#d1dbe5"))
 	rating.add_theme_font_size_override("font_size", 28)
 	identity.add_child(rating)
 	var rating_meta := VBoxContainer.new()
@@ -131,7 +131,7 @@ func setup(data: Dictionary) -> void:
 	status_panel.add_child(status_label)
 	identity.add_child(status_panel)
 
-	var player_name := _make_label(str(player.get("name", "Giocatore")), 15, Color("#f3f7fc"))
+	var player_name := _make_label(str(player.get("name", "Giocatore")), 16, Color("#ffffff"))
 	player_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	box.add_child(player_name)
 	var club_line := _make_label(str(player.get("club", "Club non indicato")), 9, MUTED)
