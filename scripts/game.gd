@@ -71,6 +71,7 @@ var market_years: SpinBox
 var market_role: OptionButton
 var selected_market_player := -1
 var market_filter := "Tutti"
+var market_sort := "Valutazione"
 var market_search_text := ""
 var ui_built := false
 
@@ -448,6 +449,7 @@ func _new_career() -> void:
 	european_competitions.clear()
 	qualified_european_comp = ""
 	market_filter = "Tutti"
+	market_sort = "Valutazione"
 	market_search_text = ""
 	tactics = {"mentalita":"Equilibrata","pressing":"Medio","costruzione":"Mista","linea":"Media","sostituzioni":"Equilibrate"}
 	formation = "4-3-3"
@@ -717,8 +719,8 @@ func _generate_market() -> void:
 			for row in clubs[club].get("players", []):
 				real_pool.append({"row":row,"club":str(club),"division":str(comp.get("division", ""))})
 	real_pool.shuffle()
-	var target_size := 24 + int(staff.get("scout", 0)) * 3
-	var real_count := mini(18, mini(target_size, real_pool.size()))
+	var target_size := 48 + int(staff.get("scout", 0)) * 6
+	var real_count := mini(36, mini(target_size, real_pool.size()))
 	for i in range(real_count):
 		var entry: Dictionary = real_pool[i]
 		var row: Dictionary = entry.get("row", {})
@@ -1604,8 +1606,39 @@ func _show_market() -> void:
 		_show_market()
 	)
 	content.add_child(filter)
+	var sort_control := OptionButton.new()
+	var sort_options := ["Valutazione", "Età", "Valore", "Nome"]
+	for option in sort_options:
+		sort_control.add_item(option)
+	sort_control.select(maxi(0, sort_options.find(market_sort)))
+	sort_control.item_selected.connect(func(i):
+		market_sort = sort_control.get_item_text(i)
+		_show_market()
+	)
+	content.add_child(sort_control)
+	var market_indices: Array = []
+	for market_index in range(market.size()):
+		market_indices.append(market_index)
+	market_indices.sort_custom(func(a, b):
+		var left: Dictionary = market[int(a)]
+		var right: Dictionary = market[int(b)]
+		match market_sort:
+			"Età":
+				if int(left.get("age", 30)) != int(right.get("age", 30)):
+					return int(left.get("age", 30)) < int(right.get("age", 30))
+				return int(left.get("rating", 0)) > int(right.get("rating", 0))
+			"Valore":
+				if int(left.get("value", 0)) != int(right.get("value", 0)):
+					return int(left.get("value", 0)) < int(right.get("value", 0))
+				return int(left.get("rating", 0)) > int(right.get("rating", 0))
+			"Nome":
+				return str(left.get("name", "")).to_lower() < str(right.get("name", "")).to_lower()
+			_:
+				return int(left.get("rating", 0)) > int(right.get("rating", 0))
+	)
 	var shown := 0
-	for i in range(market.size()):
+	for market_index in market_indices:
+		var i: int = int(market_index)
 		var p: Dictionary = market[i]
 		var age := int(p.get("age", 30))
 		var value := int(p.get("value", 0))
@@ -2645,7 +2678,7 @@ func _parse_save_text(raw_text: String) -> Variant:
 	return parser.data
 
 func _save_game() -> void:
-	var data := {"save_version":2,"saved_at":Time.get_datetime_string_from_system(),"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"manager_name":manager_name,"career_difficulty":career_difficulty,"starting_budget_mode":starting_budget_mode,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"match_results":match_results,"market":market,"observed_players":observed_players,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"training_last_day":training_last_day,"training_last_season":training_last_season,"training_sessions":training_sessions,"training_last_message":training_last_message,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
+	var data := {"save_version":2,"saved_at":Time.get_datetime_string_from_system(),"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"manager_name":manager_name,"career_difficulty":career_difficulty,"starting_budget_mode":starting_budget_mode,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"match_results":match_results,"market":market,"market_sort":market_sort,"observed_players":observed_players,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"training_last_day":training_last_day,"training_last_season":training_last_season,"training_sessions":training_sessions,"training_last_message":training_last_message,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
 	# Preserve the last valid save before replacing it, so an interrupted write
 	# or damaged JSON can be recovered on the next launch.
 	var previous_file := FileAccess.open(SAVE_PATH, FileAccess.READ)
@@ -2747,6 +2780,7 @@ func _load_game() -> void:
 	fixtures = d.get("fixtures",[])
 	match_results = d.get("match_results", [])
 	market = d.get("market",[])
+	market_sort = str(d.get("market_sort", "Valutazione"))
 	observed_players = d.get("observed_players", [])
 	if typeof(observed_players) != TYPE_ARRAY:
 		observed_players = []
