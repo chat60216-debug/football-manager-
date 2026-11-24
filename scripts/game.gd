@@ -300,7 +300,9 @@ func _players_for_real_club(club: String) -> Array:
 		if identity == "": identity = str(row.get("name", ""))
 		var player_id := _unique_player_id(result)
 		var portrait_seed := absi(hash(identity + "|" + chosen))
-		result.append({"id":player_id,"portrait_seed":portrait_seed,"name":str(row.get("name","Player")),"position":pos,"age":randi_range(18,34),"rating":rating,"potential":mini(94,rating+randi_range(2,16)),"wage":rating*65,"value":rating*rating*1350,"morale":randi_range(65,88),"fitness":100,"injury":0,"contract":randi_range(1,4),"role":ROLES[i % ROLES.size()],"goals":0,"assists":0,"apps":0,"yellow":0,"red":0,"nationality":str(row.get("nationality","")),"shirt_number":int(row.get("number",0)),"real_player":true,"source":"OpenFootballBase"})
+		var player_age := int(row.get("age", 0))
+		if player_age < 16 or player_age > 45: player_age = randi_range(18,34)
+		result.append({"id":player_id,"portrait_seed":portrait_seed,"name":str(row.get("name","Player")),"position":pos,"age":player_age,"rating":rating,"potential":mini(94,rating+randi_range(2,16)),"wage":rating*65,"value":rating*rating*1350,"morale":randi_range(65,88),"fitness":100,"injury":0,"contract":randi_range(1,4),"role":ROLES[i % ROLES.size()],"goals":0,"assists":0,"apps":0,"yellow":0,"red":0,"nationality":str(row.get("nationality","")),"shirt_number":int(row.get("number",0)),"real_player":true,"source":"OpenFootballBase"})
 	return result
 
 func _make_player(index: int) -> Dictionary:
@@ -433,7 +435,9 @@ func _generate_market() -> void:
 		var identity := str(row.get("qid", row.get("name", "player")))
 		var player_id := _unique_player_id(market)
 		var portrait_seed := absi(hash(identity + "|" + str(entry.get("club", ""))))
-		var player := {"id":player_id,"portrait_seed":portrait_seed,"name":str(row.get("name","Player")),"position":pos,"age":randi_range(18,34),"rating":rating,"potential":mini(95,rating+randi_range(2,17)),"wage":rating*70,"value":rating*rating*1450,"morale":randi_range(60,88),"fitness":100,"injury":0,"contract":randi_range(1,4),"role":"Importante","goals":0,"assists":0,"apps":0,"yellow":0,"red":0,"nationality":str(row.get("nationality","")),"shirt_number":int(row.get("number",0)),"real_player":true,"source":"OpenFootballBase","club":str(entry.get("club",""))}
+		var player_age := int(row.get("age", 0))
+		if player_age < 16 or player_age > 45: player_age = randi_range(18,34)
+		var player := {"id":player_id,"portrait_seed":portrait_seed,"name":str(row.get("name","Player")),"position":pos,"age":player_age,"rating":rating,"potential":mini(95,rating+randi_range(2,17)),"wage":rating*70,"value":rating*rating*1450,"morale":randi_range(60,88),"fitness":100,"injury":0,"contract":randi_range(1,4),"role":"Importante","goals":0,"assists":0,"apps":0,"yellow":0,"red":0,"nationality":str(row.get("nationality","")),"shirt_number":int(row.get("number",0)),"real_player":true,"source":"OpenFootballBase","club":str(entry.get("club",""))}
 		if int(staff.get("scout", 0)) > 0:
 			player["rating"] = mini(92, int(player["rating"]) + randi_range(0, int(staff.get("scout", 0))))
 			player["potential"] = mini(96, int(player["potential"]) + int(staff.get("scout", 0)))
