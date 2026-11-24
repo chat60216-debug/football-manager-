@@ -60,6 +60,9 @@ func _run_smoke_test() -> void:
 	game.cash = 100000
 	game._show_tab("Allenamento")
 	await process_frame
+	if not (game.navigation is ScrollContainer):
+		_fail("landscape sidebar navigation did not use a scroll container")
+		return
 	if game.selected_tab != "Allenamento":
 		_fail("dedicated training centre did not open from navigation")
 		return
