@@ -71,9 +71,31 @@ func setup(data: Dictionary) -> void:
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(name_label)
 	var details := Label.new()
-	details.text = str(player.get("age", 0)) + " anni\n" + str(player.get("fitness", 0)) + "% forma\n" + str(player.get("nationality", ""))
+	details.text = str(player.get("age", 0)) + " anni  •  " + str(player.get("fitness", 0)) + "% forma\n" + str(player.get("nationality", ""))
 	details.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(details)
+	var condition := Label.new()
+	var injury_turns := int(player.get("injury", 0))
+	var suspension_turns := int(player.get("suspension", 0))
+	if injury_turns > 0:
+		condition.text = "INFORTUNATO • " + str(injury_turns) + " turni"
+		condition.add_theme_color_override("font_color", Color("#ff7d83"))
+	elif suspension_turns > 0:
+		condition.text = "SQUALIFICATO • " + str(suspension_turns) + " turni"
+		condition.add_theme_color_override("font_color", Color("#ffbd69"))
+	else:
+		condition.text = "Morale " + str(player.get("morale", 70)) + "% • Contratto " + str(player.get("contract", 0)) + " anni"
+		condition.add_theme_color_override("font_color", Color("#9fc6b4"))
+	condition.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	condition.add_theme_font_size_override("font_size", 10)
+	box.add_child(condition)
+	var wage := Label.new()
+	wage.text = "€" + _format_money(int(player.get("wage", 0))) + "/sett."
+	wage.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	wage.add_theme_font_size_override("font_size", 10)
+	wage.add_theme_color_override("font_color", Color("#9eafc1"))
+	box.add_child(wage)
 	var hint := Label.new()
 	hint.text = ("Calciatore reale importato • avatar generato" if bool(player.get("real_player", false)) else "Giocatore generato • avatar unico") + "\ntrascina per scambiare"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
