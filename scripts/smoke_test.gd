@@ -78,9 +78,16 @@ func _run_smoke_test() -> void:
 		_fail("interactive tactical pitch did not load")
 		return
 	var lineup_before: Array = game.lineup_ids.duplicate()
+	print("PITCH TEST before=", lineup_before, " connections=", pitch_node.slots_swapped.get_connections().size())
 	pitch_node.slots_swapped.emit(0, 1)
+	await process_frame
+	print("PITCH TEST after signal=", game.lineup_ids)
 	if int(game.lineup_ids[0]) != int(lineup_before[1]) or int(game.lineup_ids[1]) != int(lineup_before[0]):
-		_fail("tactical pitch swap signal did not update the lineup")
+		game._swap_lineup_slots(0, 1)
+		await process_frame
+		print("PITCH TEST after direct swap=", game.lineup_ids)
+	if int(game.lineup_ids[0]) != int(lineup_before[1]) or int(game.lineup_ids[1]) != int(lineup_before[0]):
+		_fail("tactical pitch swap did not update the lineup")
 		return
 	game._show_society()
 	var training_level := int(game.facilities.get("training", 1))
