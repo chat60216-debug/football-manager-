@@ -32,7 +32,11 @@ func _run_smoke_test() -> void:
 		return
 	game.setup_difficulty.select(1)
 	game.setup_budget.select(1)
+	game.observed_players = [{"id": -999, "scouting_status": "In osservazione"}]
 	game._new_career()
+	if not game.observed_players.is_empty():
+		_fail("starting a new career retained scouting targets from the previous career")
+		return
 	await process_frame
 	if game.players.size() < 11:
 		_fail("career squad has fewer than 11 players")
