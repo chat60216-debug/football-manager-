@@ -25,7 +25,7 @@ Football management career game for Android, built with Godot 4.4.1.
 - Loans, permanent transfers, club ownership updates, parent-club tracking, contract renewals, contract expiry and weekly wage accounting.
 - Youth academy, generated prospects, player promotion and staff upgrades.
 - Club management: sponsor contracts, board objectives, confidence and upgradeable training, stadium, medical and academy facilities.
-- Player statistics, fitness, morale, injuries, suspensions and local save/load.
+- Player statistics, fitness, morale, injuries, suspensions and local save/load, with automatic save on Android pause/close and backup recovery that repairs a damaged primary save.
 
 ## Real data coverage and attribution
 
