@@ -226,6 +226,24 @@ func _run_smoke_test() -> void:
 	if game.content.get_child_count() < 90:
 		_fail("match report UI did not display the full minute-by-minute timeline")
 		return
+	var visualizer_node: Control = null
+	for content_child in game.content.get_children():
+		if content_child.get_script() == load("res://scripts/match_visualizer.gd"):
+			visualizer_node = content_child
+			break
+	if visualizer_node == null:
+		_fail("match visualizer did not load with the match report")
+		return
+	visualizer_node.setup({"home": "Home Test", "away": "Away Test", "events": [{"type": "goal", "team": "Home Test"}]})
+	visualizer_node._process(0.2)
+	if visualizer_node.ball_position.x <= 0.5:
+		_fail("home goal did not animate the ball toward the away goal")
+		return
+	visualizer_node.setup({"home": "Home Test", "away": "Away Test", "events": [{"type": "goal", "team": "Away Test"}]})
+	visualizer_node._process(0.2)
+	if visualizer_node.ball_position.x >= 0.5:
+		_fail("away goal did not animate the ball toward the home goal")
+		return
 	for _round in range(3):
 		game._play_european_round("UEFA Champions League")
 	for _round in range(3):
