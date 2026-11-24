@@ -69,35 +69,125 @@ func _ready() -> void:
 	else:
 		_show_setup()
 
+func _make_dynasty_theme() -> Theme:
+	var game_theme := Theme.new()
+	game_theme.default_font_size = 16
+	game_theme.set_color("font_color", "Label", Color("#e8f0fb"))
+	game_theme.set_color("font_color", "Button", Color("#eaf4ff"))
+	game_theme.set_color("font_hover_color", "Button", Color("#ffffff"))
+	game_theme.set_color("font_pressed_color", "Button", Color("#ffffff"))
+	game_theme.set_color("font_disabled_color", "Button", Color("#718096"))
+	game_theme.set_font_size("font_size", "Button", 15)
+	game_theme.set_font_size("font_size", "Label", 16)
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = Color("#14243a")
+	normal.border_color = Color("#294563")
+	normal.set_border_width_all(1)
+	normal.set_corner_radius_all(12)
+	normal.content_margin_left = 12
+	normal.content_margin_right = 12
+	normal.content_margin_top = 9
+	normal.content_margin_bottom = 9
+	var hover := StyleBoxFlat.new()
+	hover.bg_color = Color("#203b59")
+	hover.border_color = Color("#54c7e8")
+	hover.set_border_width_all(2)
+	hover.set_corner_radius_all(12)
+	hover.content_margin_left = 12
+	hover.content_margin_right = 12
+	hover.content_margin_top = 9
+	hover.content_margin_bottom = 9
+	var pressed := StyleBoxFlat.new()
+	pressed.bg_color = Color("#087f8c")
+	pressed.border_color = Color("#70e1ed")
+	pressed.set_border_width_all(1)
+	pressed.set_corner_radius_all(12)
+	pressed.content_margin_left = 12
+	pressed.content_margin_right = 12
+	pressed.content_margin_top = 9
+	pressed.content_margin_bottom = 9
+	for control_type in ["Button", "OptionButton"]:
+		game_theme.set_stylebox("normal", control_type, normal)
+		game_theme.set_stylebox("hover", control_type, hover)
+		game_theme.set_stylebox("pressed", control_type, pressed)
+		game_theme.set_stylebox("focus", control_type, hover)
+	var field := StyleBoxFlat.new()
+	field.bg_color = Color("#0d1b2c")
+	field.border_color = Color("#35516d")
+	field.set_border_width_all(1)
+	field.set_corner_radius_all(10)
+	field.content_margin_left = 12
+	field.content_margin_right = 12
+	field.content_margin_top = 8
+	field.content_margin_bottom = 8
+	game_theme.set_stylebox("normal", "LineEdit", field)
+	game_theme.set_stylebox("focus", "LineEdit", hover)
+	game_theme.set_color("font_color", "LineEdit", Color("#f3f7ff"))
+	game_theme.set_color("font_placeholder_color", "LineEdit", Color("#8193aa"))
+	var panel := StyleBoxFlat.new()
+	panel.bg_color = Color("#101f32")
+	panel.border_color = Color("#243d59")
+	panel.set_border_width_all(1)
+	panel.set_corner_radius_all(16)
+	panel.content_margin_left = 14
+	panel.content_margin_right = 14
+	panel.content_margin_top = 12
+	panel.content_margin_bottom = 12
+	game_theme.set_stylebox("panel", "PanelContainer", panel)
+	return game_theme
+
 func _build_shell() -> void:
 	for child in get_children():
 		child.queue_free()
 	var bg := ColorRect.new()
-	bg.color = Color("#091321")
+	bg.color = Color("#07111f")
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	var accent := ColorRect.new()
+	accent.color = Color("#18b6c9")
+	accent.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	accent.custom_minimum_size = Vector2(0, 5)
+	add_child(accent)
 	root = VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root.add_theme_constant_override("separation", 8)
+	root.add_theme_constant_override("separation", 10)
+	root.theme = _make_dynasty_theme()
 	add_child(root)
+	var masthead := PanelContainer.new()
+	masthead.custom_minimum_size = Vector2(0, 76)
+	root.add_child(masthead)
+	var brand_row := HBoxContainer.new()
+	brand_row.add_theme_constant_override("separation", 10)
+	masthead.add_child(brand_row)
 	var title := Label.new()
-	title.text = "⚽ FOOTBALL CAREER: DYNASTY"
-	title.add_theme_font_size_override("font_size", 25)
-	title.add_theme_color_override("font_color", Color("#8ce5ff"))
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	root.add_child(title)
+	title.text = "⚽  DYNASTY"
+	title.add_theme_font_size_override("font_size", 27)
+	title.add_theme_color_override("font_color", Color("#79e1ed"))
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	brand_row.add_child(title)
+	var season_mark := Label.new()
+	season_mark.text = "CAREER MODE  •  26/27"
+	season_mark.add_theme_font_size_override("font_size", 11)
+	season_mark.add_theme_color_override("font_color", Color("#8fa9c4"))
+	season_mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	brand_row.add_child(season_mark)
 	status_label = Label.new()
 	status_label.text = "La tua carriera calcistica"
 	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	status_label.add_theme_color_override("font_color", Color("#a9bfd5"))
 	root.add_child(status_label)
+	var nav_panel := PanelContainer.new()
+	root.add_child(nav_panel)
 	var nav := GridContainer.new()
-	nav.columns = 3
-	root.add_child(nav)
+	nav.columns = 4
+	nav.add_theme_constant_override("h_separation", 7)
+	nav.add_theme_constant_override("v_separation", 7)
+	nav_panel.add_child(nav)
 	for tab in ["Home","Rosa","Formazione","Mercato","Classifica","Coppe","UEFA","Club","Giovanili","Staff","Statistiche","Società"]:
 		var b := Button.new()
 		b.text = tab
-		b.custom_minimum_size = Vector2(0, 44)
+		b.custom_minimum_size = Vector2(0, 46)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.pressed.connect(func(): _show_tab(tab))
 		nav.add_child(b)
@@ -105,10 +195,14 @@ func _build_shell() -> void:
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root.add_child(scroll)
+	var page_panel := PanelContainer.new()
+	page_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	page_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.add_child(page_panel)
 	content = VBoxContainer.new()
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 10)
-	scroll.add_child(content)
+	content.add_theme_constant_override("separation", 12)
+	page_panel.add_child(content)
 	ui_built = true
 
 func _clear_content() -> void:
@@ -120,13 +214,19 @@ func _label(text_value: String, size := 16) -> Label:
 	l.text = text_value
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.add_theme_font_size_override("font_size", size)
+	if size >= 22:
+		l.add_theme_color_override("font_color", Color("#79e1ed"))
+	elif size >= 18:
+		l.add_theme_color_override("font_color", Color("#f4f8ff"))
+	else:
+		l.add_theme_color_override("font_color", Color("#c5d4e5"))
 	content.add_child(l)
 	return l
 
 func _button(text_value: String, callback: Callable) -> Button:
 	var b := Button.new()
 	b.text = text_value
-	b.custom_minimum_size = Vector2(0, 48)
+	b.custom_minimum_size = Vector2(0, 50)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.pressed.connect(callback)
 	content.add_child(b)
