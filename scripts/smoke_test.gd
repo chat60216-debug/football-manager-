@@ -248,7 +248,7 @@ func _run_smoke_test() -> void:
 	game.cash = 5000000
 	game.wage_budget = 1000000
 	game.selected_market_player = 0
-	var players_before_loan := game.players.size()
+	var players_before_loan: int = game.players.size()
 	for _attempt in range(60):
 		if game.players.size() > players_before_loan:
 			break
