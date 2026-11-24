@@ -1053,6 +1053,13 @@ func _team_record(team: String) -> Dictionary:
 func _club_power(team: String) -> int:
 	if team == club_name:
 		var power := _team_rating()
+		match career_difficulty:
+			"Facile":
+				power += 3
+			"Difficile":
+				power -= 3
+			"Legend":
+				power -= 6
 		match str(tactics.get("mentalita", "Equilibrata")):
 			"Offensiva": power += 3
 			"Difensiva": power -= 1
