@@ -180,8 +180,10 @@ func _league_team_names() -> Array:
 		"Inghilterra|Premier League":["AFC Bournemouth","Arsenal","Aston Villa","Brentford","Brighton & Hove Albion","Chelsea","Coventry City","Crystal Palace","Everton","Fulham","Hull City","Ipswich Town","Leeds United","Liverpool","Manchester City","Manchester United","Newcastle United","Nottingham Forest","Sunderland","Tottenham Hotspur"],
 		"Inghilterra|Championship":["Birmingham City","Blackburn Rovers","Bristol City","Bolton Wanderers","Burnley","Cardiff City","Charlton Athletic","Derby County","Lincoln City","Middlesbrough","Millwall","Norwich City","Portsmouth","Preston North End","Queens Park Rangers","Sheffield United","Southampton","Stoke City","Swansea City","Watford","West Bromwich Albion","West Ham United","Wrexham","Wolverhampton Wanderers"],
 		"Inghilterra|League One":["AFC Wimbledon","Barnsley","Blackpool","Bradford City","Bromley","Burton Albion","Cambridge United","Doncaster Rovers","Huddersfield Town","Leicester City","Leyton Orient","Luton Town","Mansfield Town","Milton Keynes Dons","Notts County","Oxford United","Peterborough United","Plymouth Argyle","Reading","Sheffield Wednesday","Stevenage","Stockport County","Wigan Athletic","Wycombe Wanderers"],
+		"Inghilterra|League Two":["Accrington Stanley","Barnet","Bristol Rovers","Cheltenham Town","Chesterfield","Colchester United","Crawley Town","Crewe Alexandra","Exeter City","Fleetwood Town","Gillingham","Grimsby Town","Newport County","Northampton Town","Oldham Athletic","Port Vale","Rochdale","Rotherham United","Salford City","Shrewsbury Town","Swindon Town","Tranmere Rovers","Walsall","York City"],
 		"Spagna|Liga 1":["Athletic Club","Atlético de Madrid","CA Osasuna","Celta Vigo","Deportivo Alavés","Elche CF","FC Barcelona","Getafe CF","Levante UD","Málaga CF","Racing Santander","Rayo Vallecano","RC Deportivo","RCD Espanyol","Real Betis","Real Madrid","Real Sociedad","Sevilla FC","Valencia CF","Villarreal CF"],
 		"Francia|Ligue 1":["Angers SCO","AJ Auxerre","Stade Brestois 29","Le Havre AC","Le Mans FC","RC Lens","FC Lorient","LOSC Lille","Olympique Lyonnais","Olympique de Marseille","AS Monaco","OGC Nice","Paris FC","Paris Saint-Germain","Stade Rennais","RC Strasbourg","Toulouse FC","ESTAC Troyes"],
+		"Francia|Ligue 2":["FC Annecy","US Boulogne","Clermont Foot","Dijon FCO","USL Dunkerque","Grenoble Foot 38","EA Guingamp","Stade Lavallois","FC Metz","Montpellier HSC","AS Nancy-Lorraine","FC Nantes","Pau FC","Red Star FC","Stade de Reims","Rodez AF","AS Saint-Étienne","FC Sochaux-Montbéliard"],
 		"Germania|Bundesliga 1":["FC Bayern München","Borussia Dortmund","RB Leipzig","Bayer 04 Leverkusen","VfB Stuttgart","Eintracht Frankfurt","SC Freiburg","TSG Hoffenheim","1. FSV Mainz 05","VfL Wolfsburg","Borussia Mönchengladbach","Werder Bremen","FC Augsburg","1. FC Union Berlin","1. FC Köln","Hamburger SV","FC St. Pauli","1. FC Heidenheim"],
 		"Germania|Bundesliga 2":["VfL Wolfsburg","1. FC Heidenheim","FC St. Pauli","Hannover 96","SV Darmstadt 98","1. FC Kaiserslautern","Hertha BSC","1. FC Nürnberg","VfL Bochum","Karlsruher SC","Dynamo Dresden","Holstein Kiel","Arminia Bielefeld","1. FC Magdeburg","Eintracht Braunschweig","Greuther Fürth","Energie Cottbus","VfL Osnabrück"]
 	}
@@ -226,7 +228,7 @@ func _generate_league() -> void:
 	var rounds_per_leg := rotation.size() - 1
 	for round_index in range(rounds_per_leg):
 		var games: Array = []
-		for j in range(rotation.size() / 2):
+		for j in range(int(rotation.size() / 2)):
 			var home: String = rotation[j]
 			var away: String = rotation[rotation.size() - 1 - j]
 			if home != "BYE" and away != "BYE":
