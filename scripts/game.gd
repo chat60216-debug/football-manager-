@@ -502,7 +502,7 @@ func _load_real_roster_database() -> void:
 	var file := FileAccess.open("res://data/real_rosters.json", FileAccess.READ)
 	if file == null:
 		return
-	var parsed = JSON.parse_string(file.get_as_text())
+	var parsed = _parse_save_text(file.get_as_text())
 	if typeof(parsed) == TYPE_DICTIONARY:
 		real_roster_db = parsed.get("competitions", {})
 
@@ -2460,6 +2460,12 @@ func _weekly_wages() -> int:
 func _money(value: int) -> String:
 	return str(value)
 
+func _parse_save_text(raw_text: String) -> Variant:
+	var parser := JSON.new()
+	if parser.parse(raw_text) != OK:
+		return null
+	return parser.data
+
 func _save_game() -> void:
 	var data := {"save_version":2,"saved_at":Time.get_datetime_string_from_system(),"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"manager_name":manager_name,"career_difficulty":career_difficulty,"starting_budget_mode":starting_budget_mode,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"match_results":match_results,"market":market,"observed_players":observed_players,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
 	# Preserve the last valid save before replacing it, so an interrupted write
@@ -2468,7 +2474,7 @@ func _save_game() -> void:
 	if previous_file != null:
 		var previous_text := previous_file.get_as_text()
 		previous_file.close()
-		if typeof(JSON.parse_string(previous_text)) == TYPE_DICTIONARY:
+		if typeof(_parse_save_text(previous_text)) == TYPE_DICTIONARY:
 			var backup_file := FileAccess.open(SAVE_PATH + ".bak", FileAccess.WRITE)
 			if backup_file != null:
 				backup_file.store_string(previous_text)
@@ -2535,7 +2541,7 @@ func _load_game() -> void:
 	if typeof(parsed) != TYPE_DICTIONARY:
 		var backup_file := FileAccess.open(SAVE_PATH + ".bak", FileAccess.READ)
 		if backup_file != null:
-			parsed = JSON.parse_string(backup_file.get_as_text())
+			parsed = _parse_save_text(backup_file.get_as_text())
 			backup_file.close()
 			if typeof(parsed) == TYPE_DICTIONARY:
 				recovered_from_backup = true
