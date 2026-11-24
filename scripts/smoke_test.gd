@@ -76,6 +76,17 @@ func _run_smoke_test() -> void:
 		return
 	game._show_tab("Allenamento")
 	await process_frame
+	game.tactics["mentalita"] = "Offensiva"
+	game._notification(Node.NOTIFICATION_APPLICATION_PAUSED)
+	var pause_save := FileAccess.open("user://dynasty_save.json", FileAccess.READ)
+	if pause_save == null:
+		_fail("mobile pause did not trigger an automatic career save")
+		return
+	var pause_data = game._parse_save_text(pause_save.get_as_text())
+	pause_save.close()
+	if typeof(pause_data) != TYPE_DICTIONARY or str(pause_data.get("tactics", {}).get("mentalita", "")) != "Offensiva":
+		_fail("mobile pause auto-save did not persist the latest tactical changes")
+		return
 	game._train_squad()
 	var trained_player: Dictionary = {}
 	for squad_player in game.players:
