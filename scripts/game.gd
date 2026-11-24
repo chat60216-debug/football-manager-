@@ -410,11 +410,8 @@ func _show_squad() -> void:
 		var card = preload("res://scripts/player_card.gd").new()
 		card.setup(p)
 		card.swap_requested.connect(_swap_players)
+		card.sell_requested.connect(_sell_player)
 		grid.add_child(card)
-		var sell := Button.new()
-		sell.text = "Vendi • €"+_money(int(p.value*0.8))
-		sell.pressed.connect(func(): _sell_player(int(p.id)))
-		card.add_child(sell)
 
 func _swap_players(source_id: int, target_id: int) -> void:
 	var source_index := -1
@@ -422,7 +419,7 @@ func _swap_players(source_id: int, target_id: int) -> void:
 	for i in range(players.size()):
 		if int(players[i].get("id", -1)) == source_id:
 			source_index = i
-			elif int(players[i].get("id", -1)) == target_id:
+		elif int(players[i].get("id", -1)) == target_id:
 				target_index = i
 	if source_index < 0 or target_index < 0:
 		return
