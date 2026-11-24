@@ -56,6 +56,7 @@ var market_wage: SpinBox
 var market_years: SpinBox
 var market_role: OptionButton
 var selected_market_player := -1
+var market_filter := "Tutti"
 var ui_built := false
 
 func _ready() -> void:
@@ -758,10 +759,30 @@ func _show_market() -> void:
 	_clear_content()
 	_label("MERCATO TRASFERIMENTI",22)
 	_label("Cassa: €"+_money(cash)+" • Budget ingaggi: €"+_money(wage_budget))
+	var filter := OptionButton.new()
+	for option in ["Tutti","Giovani U21","Occasioni sotto €2M","Top player OVR 75+"]:
+		filter.add_item(option)
+	filter.select(["Tutti","Giovani U21","Occasioni sotto €2M","Top player OVR 75+"].find(market_filter))
+	filter.item_selected.connect(func(i):
+		market_filter = filter.get_item_text(i)
+		_show_market()
+	)
+	content.add_child(filter)
+	var shown := 0
 	for i in range(market.size()):
 		var p: Dictionary = market[i]
+		var age := int(p.get("age", 30))
+		var value := int(p.get("value", 0))
+		var rating := int(p.get("rating", 0))
+		if market_filter == "Giovani U21" and age > 21: continue
+		if market_filter == "Occasioni sotto €2M" and value >= 2000000: continue
+		if market_filter == "Top player OVR 75+" and rating < 75: continue
 		var idx := i
-		_button(p.name+" | "+p.position+" | "+str(p.rating)+" OVR | €"+_money(p.value),func(): _negotiate(idx))
+		var label := str(p.get("name", "Giocatore")) + " | " + str(p.get("position", "")) + " | " + str(rating) + " OVR | " + str(age) + " anni | POT " + str(p.get("potential", rating)) + " | €" + _money(value)
+		_button(label,func(): _negotiate(idx))
+		shown += 1
+	if shown == 0:
+		_label("Nessun giocatore corrisponde al filtro. Cambia selezione.")
 
 func _negotiate(index: int) -> void:
 	if index < 0 or index >= market.size():
@@ -807,11 +828,21 @@ func _submit_offer() -> void:
 	var p: Dictionary = market[selected_market_player]
 	var fee := int(market_fee.value)
 	var wage := int(market_wage.value)
+	if players.size() >= 30:
+		_label("Rosa completa: vendi o svincola un giocatore prima di acquistare.")
+		return
 	if fee > cash or wage > wage_budget:
 		_label("Offerta rifiutata: fondi o budget ingaggi insufficienti.")
 		return
-	if fee < int(p.value*0.78) or wage < int(p.wage*0.85):
-		_label("Offerta rifiutata. Prova ad aumentare cifra o ingaggio.")
+	var value_ratio := float(fee) / maxf(1.0, float(p.get("value", 1)))
+	var wage_ratio := float(wage) / maxf(1.0, float(p.get("wage", 1)))
+	var role_bonus := 0.12 if ROLES[market_role.selected] in ["Cruciale","Importante"] else 0.04
+	var prestige_bonus := clampf(float(_team_rating() - int(p.get("rating", 60))) / 100.0, -0.12, 0.12)
+	var acceptance := clampf(0.18 + (value_ratio - 0.65) * 1.1 + (wage_ratio - 0.75) * 0.55 + role_bonus + prestige_bonus, 0.04, 0.97)
+	if randf() > acceptance:
+		var counter_fee := int(float(p.get("value", 0)) * 1.08)
+		var counter_wage := int(float(p.get("wage", 0)) * 1.08)
+		_label("Trattativa fallita. Il club chiede circa €" + _money(counter_fee) + " e il giocatore vuole €" + _money(counter_wage) + "/sett.")
 		return
 	p.contract = int(market_years.value)
 	p.role = ROLES[market_role.selected]
@@ -968,9 +999,9 @@ func _train_squad() -> void:
 		match training_focus:
 			"Tecnica":
 				if int(p.get("age", 30)) < 30:
-					p.rating = mini(int(p.get("potential", 90)), int(p.get("rating", 50)) + 1 + int(staff.get("coach", 0)))
+					p.rating = mini(int(p.get("potential", 90)), int(p.get("rating", 50)) + 1 + int(staff.get("coach", 0)) + int(int(facilities.get("training", 1)) / 3))
 			"Fisico":
-				p.fitness = mini(100, int(p.get("fitness", 70)) + 12)
+				p.fitness = mini(100, int(p.get("fitness", 70)) + 12 + int(facilities.get("training", 1)))
 			"Tattica":
 				p.morale = mini(100, int(p.get("morale", 70)) + 5)
 			"Recupero":
