@@ -91,9 +91,12 @@ func setup(data: Dictionary) -> void:
 	var overall_tag := _make_label("OVR", 10, MUTED, true)
 	overall_tag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	rating_row.add_child(overall_tag)
+	var position_panel := PanelContainer.new()
+	position_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	position_panel.add_theme_stylebox_override("panel", _tag_style(Color("#24445f"), Color("#78dff1")))
 	var position_tag := _make_label(str(player.get("position", "—")), 12, Color("#ffffff"), true)
-	position_tag.add_theme_stylebox_override("normal", _tag_style(Color("#24445f"), Color("#78dff1")))
-	box.add_child(position_tag)
+	position_panel.add_child(position_tag)
+	box.add_child(position_panel)
 
 	var name_label := _make_label(str(player.get("name", "Giocatore")), 14, Color("#f2f6fb"), true)
 	name_label.add_theme_font_size_override("font_size", 14)
@@ -101,6 +104,14 @@ func setup(data: Dictionary) -> void:
 
 	var details := _make_label(str(player.get("age", 0)) + " ANNI   •   " + str(player.get("fitness", 0)) + "% FORMA", 10, MUTED, true)
 	box.add_child(details)
+
+	var squad_status := "TITOLARE" if bool(player.get("starting_xi", false)) else "PANCHINA / RISERVA"
+	var status_panel := PanelContainer.new()
+	status_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	status_panel.add_theme_stylebox_override("panel", _tag_style(Color("#3a3020") if bool(player.get("starting_xi", false)) else Color("#1b2b3e"), GOLD if bool(player.get("starting_xi", false)) else Color("#6685a4")))
+	var status_label := _make_label(squad_status, 9, GOLD if bool(player.get("starting_xi", false)) else Color("#a9c1d8"), true)
+	status_panel.add_child(status_label)
+	box.add_child(status_panel)
 
 	var condition := _make_label("", 10, Color("#a8d7bd"), true)
 	var injury_turns := int(player.get("injury", 0))
