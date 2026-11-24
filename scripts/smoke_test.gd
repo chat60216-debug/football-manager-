@@ -57,6 +57,21 @@ func _run_smoke_test() -> void:
 		_fail("youth prospects did not age and persist into the next season")
 		return
 	var real_count: int = game.players.filter(func(p): return bool(p.get("real_player", false))).size()
+	var team_rating_before: int = game._team_rating()
+	var outfield_id := int(game.lineup_ids[10])
+	for squad_player in game.players:
+		if int(squad_player.get("id", -1)) == outfield_id:
+			var saved_position := str(squad_player.get("position", ""))
+			var saved_fitness := int(squad_player.get("fitness", 100))
+			squad_player["position"] = "POR"
+			squad_player["fitness"] = 20
+			var weakened_rating: int = game._team_rating()
+			squad_player["position"] = saved_position
+			squad_player["fitness"] = saved_fitness
+			if weakened_rating >= team_rating_before:
+				_fail("team strength did not react to poor role fit and low fitness")
+				return
+			break
 	if real_count < 11:
 		_fail("real 2026/27 player squad was not imported")
 		return
