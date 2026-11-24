@@ -8,7 +8,7 @@ signal detail_requested(player_id: int)
 
 var player: Dictionary = {}
 
-const GOLD := Color("#e7bd68")
+const GOLD := Color("#72dff2")
 const ICE := Color("#8ce5ff")
 const MUTED := Color("#91a4ba")
 
@@ -70,17 +70,17 @@ func _progress_row(parent: VBoxContainer, caption: String, value: int, tint: Col
 
 func setup(data: Dictionary) -> void:
 	player = data
-	custom_minimum_size = Vector2(250, 354)
+	custom_minimum_size = Vector2(250, 382)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var starter := bool(player.get("starting_xi", false))
 	var captain := bool(player.get("captain", false))
 	var injured := int(player.get("injury", 0)) > 0
 	var suspended := int(player.get("suspension", 0)) > 0
 	var shell := StyleBoxFlat.new()
-	shell.bg_color = Color("#14253a") if starter else Color("#101e30")
-	shell.border_color = GOLD if captain else Color("#39718a") if starter else Color("#293e55")
+	shell.bg_color = Color("#142b43") if starter else Color("#0c1a2d")
+	shell.border_color = GOLD if captain else Color("#36b7d2") if starter else Color("#294563")
 	shell.set_border_width_all(2 if captain else 1)
-	shell.set_corner_radius_all(13)
+	shell.set_corner_radius_all(16)
 	shell.shadow_color = Color(0, 0, 0, 0.28)
 	shell.shadow_size = 5
 	shell.shadow_offset = Vector2(0, 2)
@@ -95,16 +95,16 @@ func setup(data: Dictionary) -> void:
 	add_child(box)
 
 	var hero := PanelContainer.new()
-	hero.custom_minimum_size = Vector2(0, 142)
+	hero.custom_minimum_size = Vector2(0, 174)
 	var hero_style := StyleBoxFlat.new()
-	hero_style.bg_color = Color("#0c1a2a")
-	hero_style.border_color = Color("#314b65")
+	hero_style.bg_color = Color("#071426")
+	hero_style.border_color = Color("#315c7e")
 	hero_style.set_border_width_all(1)
-	hero_style.set_corner_radius_all(9)
+	hero_style.set_corner_radius_all(12)
 	hero.add_theme_stylebox_override("panel", hero_style)
 	box.add_child(hero)
 	var portrait = preload("res://scripts/player_portrait.gd").new()
-	portrait.custom_minimum_size = Vector2(0, 138)
+	portrait.custom_minimum_size = Vector2(0, 170)
 	portrait.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	portrait.seed_value = int(player.get("portrait_seed", player.get("id", 1)))
 	portrait.player_name = str(player.get("name", "Player"))
@@ -121,7 +121,7 @@ func setup(data: Dictionary) -> void:
 	rating_meta.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rating_meta.add_theme_constant_override("separation", 0)
 	identity.add_child(rating_meta)
-	rating_meta.add_child(_make_label("OVERALL", 9, MUTED))
+	rating_meta.add_child(_make_label("VALUTAZIONE GENERALE", 9, MUTED))
 	rating_meta.add_child(_make_label(str(player.get("position", "—")) + "  •  " + str(player.get("age", 0)) + " ANNI", 11, Color("#edf4fb")))
 	var status := "CAPITANO" if captain else "TITOLARE" if starter else "RISERVA"
 	var status_panel := PanelContainer.new()
@@ -131,7 +131,7 @@ func setup(data: Dictionary) -> void:
 	status_panel.add_child(status_label)
 	identity.add_child(status_panel)
 
-	var player_name := _make_label(str(player.get("name", "Giocatore")), 13, Color("#f3f7fc"))
+	var player_name := _make_label(str(player.get("name", "Giocatore")), 15, Color("#f3f7fc"))
 	player_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	box.add_child(player_name)
 	var club_line := _make_label(str(player.get("club", "Club non indicato")), 9, MUTED)
