@@ -1111,9 +1111,12 @@ func _club_power(team: String) -> int:
 func _position_fit_penalty(player_position: String, slot_position: String) -> int:
 	if player_position == slot_position:
 		return 0
+	# A goalkeeper must stay in goal; using an outfield player there is a major penalty.
+	if slot_position == "POR" or player_position == "POR":
+		return 40
 	if slot_position in ["TD", "TS"] and player_position in ["TD", "TS", "DC"]:
 		return 2
-	if slot_position in ["DC"] and player_position in ["TD", "TS", "CDC"]:
+	if slot_position == "DC" and player_position in ["TD", "TS", "CDC"]:
 		return 3
 	if slot_position in ["CDC", "CC", "COC"] and player_position in ["CDC", "CC", "COC"]:
 		return 1
@@ -1121,8 +1124,6 @@ func _position_fit_penalty(player_position: String, slot_position: String) -> in
 		return 2
 	if slot_position == "ATT" and player_position in ["AD", "AS", "COC"]:
 		return 3
-	if slot_position == "POR" and player_position != "POR":
-		return 18
 	return 7
 
 func _team_rating() -> int:
