@@ -53,7 +53,7 @@ var selected_sub_in := -1
 var selected_tab := "Home"
 var root: HBoxContainer
 var content: VBoxContainer
-var navigation: VBoxContainer
+var navigation: Control
 var selected_club_name := ""
 var setup_manager_name: LineEdit
 var setup_difficulty: OptionButton
@@ -192,16 +192,23 @@ func _build_shell() -> void:
 	side_box.add_child(edition)
 	var separator := HSeparator.new()
 	side_box.add_child(separator)
-	navigation = VBoxContainer.new()
-	navigation.add_theme_constant_override("separation", 5)
-	side_box.add_child(navigation)
+	var navigation_scroll := ScrollContainer.new()
+	navigation_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	navigation_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	navigation_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	side_box.add_child(navigation_scroll)
+	navigation = navigation_scroll
+	var navigation_items := VBoxContainer.new()
+	navigation_items.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	navigation_items.add_theme_constant_override("separation", 5)
+	navigation_scroll.add_child(navigation_items)
 	for tab in ["Home","Rosa","Formazione","Tattiche","Allenamento","Calendario","Classifica","Mercato","Coppe","UEFA","Club","Giovanili","Staff","Statistiche","Società"]:
 		var button := Button.new()
 		button.text = tab
 		button.custom_minimum_size = Vector2(0, 39)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.pressed.connect(func(): _show_tab(tab))
-		navigation.add_child(button)
+		navigation_items.add_child(button)
 	var side_spacer := Control.new()
 	side_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	side_box.add_child(side_spacer)
