@@ -259,6 +259,16 @@ func _update_setup_real_clubs() -> void:
 	for club in names:
 		setup_real_club.add_item(str(club))
 
+func _unique_player_id(extra: Array = []) -> int:
+	var used_ids: Dictionary = {}
+	for p in players: used_ids[int(p.get("id", -1))] = true
+	for p in market: used_ids[int(p.get("id", -1))] = true
+	for p in youth_players: used_ids[int(p.get("id", -1))] = true
+	for p in extra: used_ids[int(p.get("id", -1))] = true
+	var candidate: int = randi()
+	while used_ids.has(candidate): candidate = randi()
+	return candidate
+
 func _players_for_real_club(club: String) -> Array:
 	var result: Array = []
 	var code := _competition_code(country, division)
@@ -288,15 +298,17 @@ func _players_for_real_club(club: String) -> Array:
 		var rating := clampi(base_rating + randi_range(-10, 10), 48, 91)
 		var identity := str(row.get("qid", ""))
 		if identity == "": identity = str(row.get("name", ""))
-		var player_id := absi(hash(identity + "|" + chosen))
-		result.append({"id":player_id,"portrait_seed":player_id,"name":str(row.get("name","Player")),"position":pos,"age":randi_range(18,34),"rating":rating,"potential":mini(94,rating+randi_range(2,16)),"wage":rating*65,"value":rating*rating*1350,"morale":randi_range(65,88),"fitness":100,"injury":0,"contract":randi_range(1,4),"role":ROLES[i % ROLES.size()],"goals":0,"assists":0,"apps":0,"yellow":0,"red":0,"nationality":str(row.get("nationality","")),"shirt_number":int(row.get("number",0)),"real_player":true,"source":"OpenFootballBase"})
+		var player_id := _unique_player_id(result)
+		var portrait_seed := absi(hash(identity + "|" + chosen))
+		result.append({"id":player_id,"portrait_seed":portrait_seed,"name":str(row.get("name","Player")),"position":pos,"age":randi_range(18,34),"rating":rating,"potential":mini(94,rating+randi_range(2,16)),"wage":rating*65,"value":rating*rating*1350,"morale":randi_range(65,88),"fitness":100,"injury":0,"contract":randi_range(1,4),"role":ROLES[i % ROLES.size()],"goals":0,"assists":0,"apps":0,"yellow":0,"red":0,"nationality":str(row.get("nationality","")),"shirt_number":int(row.get("number",0)),"real_player":true,"source":"OpenFootballBase"})
 	return result
 
 func _make_player(index: int) -> Dictionary:
 	var pos: String = POSITIONS[index % POSITIONS.size()]
 	var rating := randi_range(54, 76)
 	var age := randi_range(17, 34)
-	return {"id":randi(),"portrait_seed":randi(),"name":FIRST.pick_random()+" "+LAST.pick_random(),"position":pos,"age":age,"rating":rating,"potential":mini(92,rating+randi_range(2,20)),"wage":randi_range(900,4200),"value":rating*rating*1200,"morale":randi_range(65,90),"fitness":randi_range(82,100),"injury":0,"contract":randi_range(1,4),"role":ROLES.pick_random(),"goals":0,"assists":0,"apps":0,"yellow":0,"red":0}
+	var player_id := _unique_player_id()
+	return {"id":player_id,"portrait_seed":randi(),"name":FIRST.pick_random()+" "+LAST.pick_random(),"position":pos,"age":age,"rating":rating,"potential":mini(92,rating+randi_range(2,20)),"wage":randi_range(900,4200),"value":rating*rating*1200,"morale":randi_range(65,90),"fitness":randi_range(82,100),"injury":0,"contract":randi_range(1,4),"role":ROLES.pick_random(),"goals":0,"assists":0,"apps":0,"yellow":0,"red":0}
 
 func _league_team_names() -> Array:
 	var pyramid_key := country + "|" + division
@@ -419,8 +431,9 @@ func _generate_market() -> void:
 			base_rating = 73
 		var rating := clampi(base_rating + randi_range(-12, 12), 45, 92)
 		var identity := str(row.get("qid", row.get("name", "player")))
-		var player_id := absi(hash(identity + "|" + str(entry.get("club", ""))))
-		var player := {"id":player_id,"portrait_seed":player_id,"name":str(row.get("name","Player")),"position":pos,"age":randi_range(18,34),"rating":rating,"potential":mini(95,rating+randi_range(2,17)),"wage":rating*70,"value":rating*rating*1450,"morale":randi_range(60,88),"fitness":100,"injury":0,"contract":randi_range(1,4),"role":"Importante","goals":0,"assists":0,"apps":0,"yellow":0,"red":0,"nationality":str(row.get("nationality","")),"shirt_number":int(row.get("number",0)),"real_player":true,"source":"OpenFootballBase","club":str(entry.get("club",""))}
+		var player_id := _unique_player_id(market)
+		var portrait_seed := absi(hash(identity + "|" + str(entry.get("club", ""))))
+		var player := {"id":player_id,"portrait_seed":portrait_seed,"name":str(row.get("name","Player")),"position":pos,"age":randi_range(18,34),"rating":rating,"potential":mini(95,rating+randi_range(2,17)),"wage":rating*70,"value":rating*rating*1450,"morale":randi_range(60,88),"fitness":100,"injury":0,"contract":randi_range(1,4),"role":"Importante","goals":0,"assists":0,"apps":0,"yellow":0,"red":0,"nationality":str(row.get("nationality","")),"shirt_number":int(row.get("number",0)),"real_player":true,"source":"OpenFootballBase","club":str(entry.get("club",""))}
 		if int(staff.get("scout", 0)) > 0:
 			player["rating"] = mini(92, int(player["rating"]) + randi_range(0, int(staff.get("scout", 0))))
 			player["potential"] = mini(96, int(player["potential"]) + int(staff.get("scout", 0)))
