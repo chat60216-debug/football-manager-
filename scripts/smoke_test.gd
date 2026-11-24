@@ -67,21 +67,24 @@ func _run_smoke_test() -> void:
 		if str(starting_goalkeeper.get("position", "")) != "POR":
 			_fail("automatic lineup did not place a goalkeeper in the goalkeeper slot")
 			return
+	if game._position_fit_penalty("POR", "ATT") < 50:
+		_fail("goalkeeper role mismatch did not receive a strong tactical penalty")
+		return
 	var team_rating_before: int = game._team_rating()
-	var outfield_id := int(game.lineup_ids[10])
+	var original_fitness: Dictionary = {}
 	for squad_player in game.players:
-		if int(squad_player.get("id", -1)) == outfield_id:
-			var saved_position := str(squad_player.get("position", ""))
-			var saved_fitness := int(squad_player.get("fitness", 100))
-			squad_player["position"] = "POR"
-			squad_player["fitness"] = 20
-			var weakened_rating: int = game._team_rating()
-			squad_player["position"] = saved_position
-			squad_player["fitness"] = saved_fitness
-			if weakened_rating >= team_rating_before:
-				_fail("team strength did not react to poor role fit and low fitness")
-				return
-			break
+		var squad_id := int(squad_player.get("id", -1))
+		if game.lineup_ids.has(squad_id):
+			original_fitness[squad_id] = int(squad_player.get("fitness", 100))
+			squad_player["fitness"] = 0
+	var weakened_rating: int = game._team_rating()
+	for squad_player in game.players:
+		var squad_id := int(squad_player.get("id", -1))
+		if original_fitness.has(squad_id):
+			squad_player["fitness"] = int(original_fitness[squad_id])
+	if weakened_rating >= team_rating_before:
+		_fail("team strength did not react to low fitness")
+		return
 	if real_count < 11:
 		_fail("real 2026/27 player squad was not imported")
 		return
