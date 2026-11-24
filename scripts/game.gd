@@ -1254,3 +1254,157 @@ func _load_game() -> void:
 		_save_game()
 	_show_tab("Home")
 	status_label.text = "Carriera caricata."
+
+func _simulate_substitutions() -> Array:
+	var result: Array = []
+	if players.size() <= 11:
+		return result
+	var starters: Array = []
+	var bench: Array = []
+	for p in players:
+		if lineup_ids.has(int(p.get("id", -1))):
+			starters.append(p)
+		elif int(p.get("injury", 0)) == 0 and int(p.get("suspension", 0)) == 0:
+			bench.append(p)
+	starters.sort_custom(func(a, b): return int(a.get("fitness", 100)) < int(b.get("fitness", 100)))
+	bench.sort_custom(func(a, b): return int(a.get("rating", 0)) > int(b.get("rating", 0)))
+	var count := mini(3, mini(starters.size(), bench.size()))
+	for i in range(count):
+		var outgoing: Dictionary = starters[i]
+		var incoming: Dictionary = bench[i]
+		result.append({"minute":60 + i * 10 + randi_range(0, 4),"out_id":int(outgoing.get("id", -1)),"in_id":int(incoming.get("id", -1)),"out_name":str(outgoing.get("name", "Giocatore")),"in_name":str(incoming.get("name", "Giocatore"))})
+	return result
+
+func _create_match_report(home: String, away: String, home_goals: int, away_goals: int, substitutions: Array) -> Dictionary:
+	var events: Array = []
+	var home_attackers: Array = []
+	var away_attackers: Array = []
+	for p in players:
+		if ["ATT","AD","AS","COC"].has(str(p.get("position", ""))):
+			home_attackers.append(p)
+	for i in range(home_goals + away_goals):
+		var minute := randi_range(2, 90)
+		var is_home := i < home_goals
+		var scorer_name := "Attaccante"
+		var candidates := home_attackers
+		if not is_home: candidates = away_attackers
+		if candidates.size() > 0:
+			scorer_name = str(candidates.pick_random().get("name", "Attaccante"))
+		var team_name := home if is_home else away
+		events.append({"minute":minute,"text":"GOL! " + team_name + " — " + scorer_name + " (" + str(minute) + "′)","type":"goal"})
+	for sub in substitutions:
+		events.append({"minute":int(sub.get("minute", 60)),"text":"Sostituzione " + home + ": " + str(sub.get("in_name", "")) + " per " + str(sub.get("out_name", "")),"type":"sub"})
+	for i in range(randi_range(1, 3)):
+		var minute := randi_range(8, 88)
+		events.append({"minute":minute,"text":"Cartellino giallo — " + (home if i % 2 == 0 else away) + " (" + str(minute) + "′)","type":"card"})
+	events.append({"minute":1,"text":"1′ — Calcio d'inizio","type":"start"})
+	events.append({"minute":45,"text":"45′ — Fine primo tempo","type":"break"})
+	events.append({"minute":90,"text":"90′ — Triplice fischio","type":"end"})
+	events.sort_custom(func(a, b): return int(a.get("minute", 0)) < int(b.get("minute", 0)))
+	var played_ids: Array = lineup_ids.duplicate()
+	for sub in substitutions:
+		played_ids.erase(int(sub.get("out_id", -1)))
+		played_ids.append(int(sub.get("in_id", -1)))
+	return {"home":home,"away":away,"home_goals":home_goals,"away_goals":away_goals,"events":events,"substitutions":substitutions,"played_ids":played_ids,"date_label":"Giornata " + str(day + 1)}
+
+func _show_match_report() -> void:
+	if match_report.is_empty():
+		_show_home()
+		return
+	_clear_content()
+	_label("CRONACA DELLA PARTITA", 23)
+	_label(str(match_report.get("home", "")) + "  " + str(match_report.get("home_goals", 0)) + " - " + str(match_report.get("away_goals", 0)) + "  " + str(match_report.get("away", "")), 25)
+	_label("Cronaca minuto per minuto", 18)
+	for event in match_report.get("events", []):
+		_label(str(event.get("minute", 0)) + "′  " + str(event.get("text", "")))
+	_label("VALUTAZIONI GIOCATORI", 18)
+	var rated: Array = []
+	for p in players:
+		if match_report.get("played_ids", []).has(int(p.get("id", -1))):
+			rated.append(p)
+	rated.sort_custom(func(a, b): return float(a.get("last_rating", 6.0)) > float(b.get("last_rating", 6.0)))
+	for p in rated:
+		_label(str(p.get("name", "")) + " • " + str(p.get("last_rating", 6.0)) + "/10 • " + str(p.get("position", "")))
+	_button("Torna alla carriera", _show_home)
+	_button("Rivedi formazione", _show_formation)
+
+func _initialise_club_business() -> void:
+	sponsor_contract = {"name":"Sponsor cittadino","weekly":35000,"bonus":350000,"target":20,"goal":"Raggiungi 20 punti","active":true}
+	facilities = {"training":1,"stadium":1,"medical":1,"academy":1}
+	board_confidence = 75
+	board_objective = {"type":"points","target":35,"progress":0,"reward":600000,"label":"Raggiungi 35 punti in campionato"}
+
+func _update_board_after_match(goals: int, conceded: int) -> void:
+	if goals > conceded:
+		board_objective["progress"] = int(board_objective.get("progress", 0)) + 3
+	elif goals == conceded:
+		board_objective["progress"] = int(board_objective.get("progress", 0)) + 1
+	if int(board_objective.get("progress", 0)) >= int(board_objective.get("target", 35)):
+		if not bool(board_objective.get("completed", false)):
+			cash += int(board_objective.get("reward", 0))
+			board_confidence = mini(100, board_confidence + 12)
+			board_objective["completed"] = true
+			board_objective["label"] = "Obiettivo completato! Premio incassato."
+	else:
+		if goals < conceded:
+			board_confidence = maxi(10, board_confidence - 1)
+		elif goals > conceded:
+			board_confidence = mini(100, board_confidence + 1)
+
+func _show_society() -> void:
+	_clear_content()
+	_label("DIREZIONE E GESTIONE SOCIETARIA", 22)
+	_label("Fiducia della dirigenza: " + str(board_confidence) + "/100")
+	_label("Obiettivo: " + str(board_objective.get("label", "Nessun obiettivo")) + " • " + str(board_objective.get("progress", 0)) + "/" + str(board_objective.get("target", 0)) + " punti")
+	_label("Premio obiettivo: €" + _money(int(board_objective.get("reward", 0))))
+	_label("SPONSOR PRINCIPALE", 18)
+	_label(str(sponsor_contract.get("name", "Nessuno")) + " • €" + _money(int(sponsor_contract.get("weekly", 0))) + " a settimana • Bonus €" + _money(int(sponsor_contract.get("bonus", 0))))
+	_button("Negozia nuovo sponsor", _show_sponsor_offers)
+	_label("STRUTTURE DEL CLUB", 18)
+	var facility_names := {"training":"Centro allenamento","stadium":"Stadio","medical":"Centro medico","academy":"Accademia giovanile"}
+	for key in ["training","stadium","medical","academy"]:
+		var level := int(facilities.get(key, 1))
+		_label(str(facility_names[key]) + " • Livello " + str(level) + "/5")
+		var facility_key: String = key
+		_button("Migliora " + str(facility_names[key]) + " (€" + _money(250000 * level * level) + ")", func(): _upgrade_facility(facility_key))
+	_button("Torna al club", func(): _show_tab("Club"))
+
+func _show_sponsor_offers() -> void:
+	_clear_content()
+	_label("PROPOSTE SPONSOR", 22)
+	var offers := [
+		{"name":"Local Sport Group","weekly":52000,"bonus":250000,"target":25},
+		{"name":"Dynasty Energy","weekly":78000,"bonus":650000,"target":40},
+		{"name":"Global Football Partners","weekly":115000,"bonus":1200000,"target":55}
+	]
+	for offer in offers:
+		var contract: Dictionary = offer
+		_label(str(contract.name) + " • €" + _money(int(contract.weekly)) + "/sett. • Bonus €" + _money(int(contract.bonus)) + " • Obiettivo " + str(contract.target) + " punti")
+		_button("Firma con " + str(contract.name), func(): _sign_sponsor(contract))
+	_button("Annulla", _show_society)
+
+func _sign_sponsor(contract: Dictionary) -> void:
+	sponsor_contract = {"name":str(contract.get("name","Sponsor")),"weekly":int(contract.get("weekly",0)),"bonus":int(contract.get("bonus",0)),"target":int(contract.get("target",0)),"active":true}
+	board_objective = {"type":"points","target":int(contract.get("target",0)),"progress":0,"reward":int(contract.get("bonus",0)),"label":"Obiettivo sponsor: " + str(contract.get("target",0)) + " punti"}
+	_save_game()
+	_show_society()
+
+func _upgrade_facility(key: String) -> void:
+	if not facilities.has(key):
+		return
+	var level := int(facilities.get(key, 1))
+	if level >= 5:
+		_label("Struttura già al livello massimo.")
+		return
+	var cost := 250000 * level * level
+	if cash < cost:
+		_label("Fondi insufficienti: servono €" + _money(cost))
+		return
+	cash -= cost
+	facilities[key] = level + 1
+	if key == "academy":
+		staff["academy"] = maxi(int(staff.get("academy", 0)), level + 1)
+		_generate_youth_intake()
+	_save_game()
+	_show_society()
+
