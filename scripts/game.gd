@@ -1265,7 +1265,6 @@ func _apply_player_match(goals: int, conceded: int, substitutions: Array = []) -
 			p["fitness"] = maxi(50, int(p.get("fitness", 100)) - randi_range(3, 6))
 		else:
 			p["fitness"] = mini(100, int(p.get("fitness", 100)) + 3)
-	var scored_ids: Array = []
 	var goal_events: Array = match_report.get("events", [])
 	for event in goal_events:
 		if str(event.get("type", "")) != "goal" or str(event.get("team", "")) != club_name:
@@ -1281,7 +1280,6 @@ func _apply_player_match(goals: int, conceded: int, substitutions: Array = []) -
 		if not scorer.is_empty():
 			scorer["goals"] = int(scorer.get("goals", 0)) + 1
 			scorer["last_rating"] = snappedf(minf(9.9, float(scorer.get("last_rating", 6.5)) + 0.35), 0.1)
-			scored_ids.append(int(scorer.get("id", -1)))
 			if randf() < 0.72:
 				var assist_candidates: Array = []
 				for candidate in fit_players:
@@ -2111,6 +2109,23 @@ func _finish_season_and_move_club() -> void:
 		qualified_european_comp = "UEFA Europa League"
 	european_status = "Qualificato: " + qualified_european_comp if qualified_european_comp != "" else "Non qualificato"
 
+func _advance_youth_season() -> void:
+	for youth_index in range(youth_players.size() - 1, -1, -1):
+		var youth: Dictionary = youth_players[youth_index]
+		youth["age"] = int(youth.get("age", 16)) + 1
+		youth["rating"] = mini(int(youth.get("potential", 80)), int(youth.get("rating", 45)) + randi_range(0, 2))
+		if int(youth.get("age", 16)) >= 20:
+			youth_players.remove_at(youth_index)
+
+func _reset_player_season_stats(player: Dictionary) -> void:
+	player["goals"] = 0
+	player["assists"] = 0
+	player["apps"] = 0
+	player["yellow"] = 0
+	player["yellow_season"] = 0
+	player["red"] = 0
+	player["last_rating"] = 0.0
+
 func _new_season() -> void:
 	if day < fixtures.size():
 		_label("Devi completare il campionato prima di avviare una nuova stagione.")
@@ -2132,12 +2147,7 @@ func _new_season() -> void:
 	season += 1
 	day = 0
 	var expired_contracts: Array = []
-	for youth_index in range(youth_players.size() - 1, -1, -1):
-		var youth: Dictionary = youth_players[youth_index]
-		youth["age"] = int(youth.get("age", 16)) + 1
-		youth["rating"] = mini(int(youth.get("potential", 80)), int(youth.get("rating", 45)) + randi_range(0, 2))
-		if int(youth.get("age", 16)) >= 20:
-			youth_players.remove_at(youth_index)
+	_advance_youth_season()
 	for i in range(players.size() - 1, -1, -1):
 		var p: Dictionary = players[i]
 		if bool(p.get("loan", false)):
@@ -2149,13 +2159,7 @@ func _new_season() -> void:
 		p["fitness"] = 100
 		p["injury"] = 0
 		p["suspension"] = 0
-		p["yellow_season"] = 0
-		p["goals"] = 0
-		p["assists"] = 0
-		p["apps"] = 0
-		p["yellow"] = 0
-		p["red"] = 0
-		p["last_rating"] = 0.0
+		_reset_player_season_stats(p)
 		if int(p.get("contract", 0)) == 0:
 			expired_contracts.append(str(p.get("name", "Giocatore")))
 			wage_budget += int(p.get("wage", 0))
