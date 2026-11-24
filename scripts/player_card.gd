@@ -63,7 +63,7 @@ func setup(data: Dictionary) -> void:
 	details.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(details)
 	var hint := Label.new()
-	hint.text = ("Dati reali • avatar generato" if bool(player.get("real_player", false)) else "Giocatore generato • avatar unico") + "\ntrascina per scambiare"
+	hint.text = ("Calciatore reale importato • avatar generato" if bool(player.get("real_player", false)) else "Giocatore generato • avatar unico") + "\ntrascina per scambiare"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_font_size_override("font_size", 10)
 	box.add_child(hint)
