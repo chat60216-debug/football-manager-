@@ -30,6 +30,10 @@ var tactics := {"mentalita":"Equilibrata","pressing":"Medio","costruzione":"Mist
 var formation := "4-3-3"
 var lineup_ids: Array = []
 var training_focus := "Equilibrio"
+var training_last_day := -1
+var training_last_season := -1
+var training_sessions := 0
+var training_last_message := "Nessuna sessione completata in questa carriera."
 var youth_players: Array = []
 var staff := {"coach":0,"scout":0,"physio":0,"academy":0}
 var season_history: Array = []
@@ -191,7 +195,7 @@ func _build_shell() -> void:
 	navigation = VBoxContainer.new()
 	navigation.add_theme_constant_override("separation", 5)
 	side_box.add_child(navigation)
-	for tab in ["Home","Rosa","Formazione","Calendario","Classifica","Mercato","Coppe","UEFA","Club","Giovanili","Staff","Statistiche","Società"]:
+	for tab in ["Home","Rosa","Formazione","Allenamento","Calendario","Classifica","Mercato","Coppe","UEFA","Club","Giovanili","Staff","Statistiche","Società"]:
 		var button := Button.new()
 		button.text = tab
 		button.custom_minimum_size = Vector2(0, 39)
@@ -442,6 +446,10 @@ func _new_career() -> void:
 	formation = "4-3-3"
 	lineup_ids.clear()
 	training_focus = "Equilibrio"
+	training_last_day = -1
+	training_last_season = -1
+	training_sessions = 0
+	training_last_message = "Nessuna sessione completata in questa carriera."
 	day = 0
 	match starting_budget_mode:
 		"Ricca":
@@ -750,6 +758,7 @@ func _show_tab(tab: String) -> void:
 		"Home": _show_home()
 		"Rosa": _show_squad()
 		"Formazione": _show_formation()
+		"Allenamento": _show_training()
 		"Mercato": _show_market()
 		"Classifica": _show_table()
 		"Calendario": _show_calendar()
@@ -2071,35 +2080,192 @@ func _show_club() -> void:
 	focus.select(["Equilibrio","Tecnica","Fisico","Tattica","Recupero"].find(training_focus))
 	focus.item_selected.connect(func(i): training_focus = focus.get_item_text(i))
 	content.add_child(focus)
-	_button("Svolgi allenamento (€25.000)", _train_squad)
+	_button("Apri centro allenamento", func(): _show_tab("Allenamento"))
 	_button("Apri formazione", _show_formation)
 	_button("Gestione società, sponsor e strutture", func(): _show_tab("Società"))
 	_button("Salva partita",_save_game)
 	_button("Carica partita",_load_game)
 	_button("Nuova stagione",_new_season)
 
+func _show_training() -> void:
+	_clear_content()
+	_label("DYNASTY PERFORMANCE CENTRE", 25)
+	_label("Pianifica il lavoro settimanale, fai crescere i giovani e gestisci la condizione della rosa.", 14)
+	var summary := PanelContainer.new()
+	content.add_child(summary)
+	var summary_row := HBoxContainer.new()
+	summary_row.add_theme_constant_override("separation", 18)
+	summary.add_child(summary_row)
+	var summary_info := VBoxContainer.new()
+	summary_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	summary_row.add_child(summary_info)
+	var summary_title := Label.new()
+	summary_title.text = "CENTRO SPORTIVO  •  LIVELLO " + str(facilities.get("training", 1))
+	summary_title.add_theme_color_override("font_color", Color("#e5bd69"))
+	summary_info.add_child(summary_title)
+	var summary_detail := Label.new()
+	summary_detail.text = "Allenatore livello " + str(staff.get("coach", 0)) + "  •  Sessioni carriera " + str(training_sessions) + "  •  Cassa €" + _money(cash)
+	summary_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	summary_info.add_child(summary_detail)
+	var focus_label := Label.new()
+	focus_label.text = "PROGRAMMA DELLA SETTIMANA"
+	focus_label.add_theme_color_override("font_color", Color("#d6b66f"))
+	content.add_child(focus_label)
+	var focus := OptionButton.new()
+	for item in ["Equilibrio", "Tecnica", "Fisico", "Tattica", "Recupero"]:
+		focus.add_item(item)
+	var selected_focus := maxi(0, ["Equilibrio", "Tecnica", "Fisico", "Tattica", "Recupero"].find(training_focus))
+	focus.select(selected_focus)
+	focus.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	focus.item_selected.connect(func(i):
+		training_focus = focus.get_item_text(i)
+		_save_game()
+	)
+	content.add_child(focus)
+	var focus_description := Label.new()
+	focus_description.text = _training_focus_description(training_focus)
+	focus_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	focus_description.add_theme_color_override("font_color", Color("#9eafc1"))
+	content.add_child(focus_description)
+	var already_trained := training_last_season == season and training_last_day == day
+	var session_status := Label.new()
+	if already_trained:
+		session_status.text = "SESSIONE COMPLETATA  •  Prossimo allenamento dopo la prossima giornata"
+		session_status.add_theme_color_override("font_color", Color("#8bd6ad"))
+	else:
+		session_status.text = "SESSIONE DISPONIBILE  •  Costo €25.000"
+		session_status.add_theme_color_override("font_color", Color("#e5bd69"))
+	session_status.add_theme_font_size_override("font_size", 15)
+	content.add_child(session_status)
+	_label(training_last_message, 13)
+	var train_button := _button("INIZIA SESSIONE  •  €25.000", _train_squad)
+	train_button.disabled = already_trained or cash < 25000
+	_button("TORNA ALLA GESTIONE CLUB", func(): _show_tab("Club"))
+	_label("PROGRESSI INDIVIDUALI", 20)
+	_label("I progressi tecnici sono graduali: servono più sessioni per guadagnare un punto overall. Il potenziale resta il limite massimo.", 13)
+	var sorted_players: Array = players.duplicate()
+	sorted_players.sort_custom(func(a, b):
+		var a_progress := float(a.get("training_xp", 0.0))
+		var b_progress := float(b.get("training_xp", 0.0))
+		if is_equal_approx(a_progress, b_progress):
+			return int(a.get("age", 30)) < int(b.get("age", 30))
+		return a_progress > b_progress
+	)
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 9)
+	grid.add_theme_constant_override("v_separation", 9)
+	content.add_child(grid)
+	for p in sorted_players:
+		var card := PanelContainer.new()
+		card.custom_minimum_size = Vector2(0, 86)
+		grid.add_child(card)
+		var info := VBoxContainer.new()
+		card.add_child(info)
+		var name_label := Label.new()
+		name_label.text = str(p.get("name", "Giocatore")) + "  •  " + str(p.get("age", 0)) + " anni"
+		name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		name_label.add_theme_font_size_override("font_size", 13)
+		info.add_child(name_label)
+		var rating_label := Label.new()
+		rating_label.text = str(p.get("rating", 0)) + " OVR  /  " + str(p.get("potential", 0)) + " POT"
+		rating_label.add_theme_color_override("font_color", Color("#e5bd69"))
+		rating_label.add_theme_font_size_override("font_size", 12)
+		info.add_child(rating_label)
+		var progress := ProgressBar.new()
+		progress.min_value = 0
+		progress.max_value = 100
+		progress.value = clampf(float(p.get("training_xp", 0.0)), 0.0, 100.0)
+		progress.show_percentage = false
+		progress.custom_minimum_size = Vector2(0, 8)
+		info.add_child(progress)
+		var xp_label := Label.new()
+		xp_label.text = ("Potenziale raggiunto" if int(p.get("rating", 0)) >= int(p.get("potential", 0)) else str(int(float(p.get("training_xp", 0.0)))) + "% al prossimo miglioramento")
+		xp_label.add_theme_font_size_override("font_size", 10)
+		xp_label.add_theme_color_override("font_color", Color("#9eafc1"))
+		info.add_child(xp_label)
+
+func _training_focus_description(focus_name: String) -> String:
+	match focus_name:
+		"Tecnica":
+			return "Lavoro tecnico e individuale: aumenta soprattutto la crescita dei giocatori giovani, con progressi graduali verso il potenziale."
+		"Fisico":
+			return "Preparazione atletica: recupera condizione e dà una piccola spinta allo sviluppo, ma affatica maggiormente la rosa."
+		"Tattica":
+			return "Movimenti collettivi e schemi: migliora il morale e favorisce la crescita con un carico moderato."
+		"Recupero":
+			return "Rigenerazione e prevenzione: recupera molta condizione e riduce di un turno gli infortuni."
+		_:
+			return "Carico bilanciato: piccoli progressi, recupero della condizione e morale più alto."
+
 func _train_squad() -> void:
+	if training_last_season == season and training_last_day == day:
+		training_last_message = "Hai già completato l'allenamento di questa settimana."
+		_show_training()
+		return
 	if cash < 25000:
-		_label("Fondi insufficienti per l'allenamento.")
+		training_last_message = "Fondi insufficienti: servono €25.000 per organizzare la sessione."
+		_show_training()
 		return
 	cash -= 25000
+	var improved_players := 0
+	var total_fitness_gain := 0
+	var coach_level := int(staff.get("coach", 0))
+	var training_level := int(facilities.get("training", 1))
 	for p in players:
+		var age := int(p.get("age", 30))
+		var rating := int(p.get("rating", 50))
+		var potential := int(p.get("potential", 90))
+		var xp := float(p.get("training_xp", 0.0))
+		var xp_gain := 0.0
 		match training_focus:
 			"Tecnica":
-				if int(p.get("age", 30)) < 30:
-					p.rating = mini(int(p.get("potential", 90)), int(p.get("rating", 50)) + 1 + int(staff.get("coach", 0)) + int(int(facilities.get("training", 1)) / 3))
-			"Fisico":
-				p.fitness = mini(100, int(p.get("fitness", 70)) + 12 + int(facilities.get("training", 1)))
+				xp_gain = 18.0 + float(coach_level * 3 + training_level * 2)
+				p["morale"] = mini(100, int(p.get("morale", 70)) + 1)
 			"Tattica":
-				p.morale = mini(100, int(p.get("morale", 70)) + 5)
+				xp_gain = 12.0 + float(coach_level * 2 + training_level)
+				p["morale"] = mini(100, int(p.get("morale", 70)) + 4)
+			"Fisico":
+				xp_gain = 8.0 + float(coach_level + training_level)
+				var fitness_gain := 10 + training_level
+				p["fitness"] = mini(100, int(p.get("fitness", 70)) + fitness_gain)
+				total_fitness_gain += fitness_gain
 			"Recupero":
-				p.fitness = mini(100, int(p.get("fitness", 70)) + 20)
-				p.injury = maxi(0, int(p.get("injury", 0)) - 1)
+				p["fitness"] = mini(100, int(p.get("fitness", 70)) + 20)
+				p["injury"] = maxi(0, int(p.get("injury", 0)) - 1)
+				total_fitness_gain += 20
 			_:
-				p.fitness = mini(100, int(p.get("fitness", 70)) + 6)
-				p.morale = mini(100, int(p.get("morale", 70)) + 2)
+				xp_gain = 8.0 + float(coach_level + training_level)
+				p["fitness"] = mini(100, int(p.get("fitness", 70)) + 6)
+				p["morale"] = mini(100, int(p.get("morale", 70)) + 2)
+				total_fitness_gain += 6
+		if age > 28:
+			xp_gain *= 0.65
+		if age > 32:
+			xp_gain *= 0.55
+		if int(p.get("injury", 0)) > 0 and training_focus != "Recupero":
+			xp_gain *= 0.35
+		if rating < potential and age < 35:
+			xp += xp_gain
+			while xp >= 100.0 and rating < potential:
+				rating += 1
+				xp -= 100.0
+				improved_players += 1
+			p["rating"] = mini(potential, rating)
+			p["training_xp"] = clampf(xp, 0.0, 99.9)
+		else:
+			p["training_xp"] = 0.0
+		if training_focus == "Fisico" and int(p.get("fitness", 100)) < 55 and int(p.get("injury", 0)) == 0:
+			var injury_risk := 0.012 - float(int(staff.get("physio", 0))) * 0.002 - float(int(facilities.get("medical", 1))) * 0.001
+			if randf() < maxf(0.002, injury_risk):
+				p["injury"] = randi_range(1, 2)
+	training_last_day = day
+	training_last_season = season
+	training_sessions += 1
+	training_last_message = "Sessione " + training_focus.to_lower() + " completata. " + str(improved_players) + " miglioramenti overall, " + str(total_fitness_gain) + " punti di recupero complessivi."
 	_save_game()
-	_show_club()
+	_show_training()
 
 
 
@@ -2262,7 +2428,7 @@ func _reset_player_season_stats(player: Dictionary) -> void:
 	player["last_rating"] = 0.0
 
 func _new_season() -> void:
-	if day < fixtures.size():
+	if league.is_empty() or fixtures.is_empty() or day < fixtures.size():
 		_label("Devi completare il campionato prima di avviare una nuova stagione.")
 		return
 	var award_player: Dictionary = {}
@@ -2281,6 +2447,8 @@ func _new_season() -> void:
 	last_season_message += "\\n" + awards_text
 	season += 1
 	day = 0
+	training_last_day = -1
+	training_last_season = -1
 	var expired_contracts: Array = []
 	_advance_youth_season()
 	for i in range(players.size() - 1, -1, -1):
@@ -2467,7 +2635,7 @@ func _parse_save_text(raw_text: String) -> Variant:
 	return parser.data
 
 func _save_game() -> void:
-	var data := {"save_version":2,"saved_at":Time.get_datetime_string_from_system(),"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"manager_name":manager_name,"career_difficulty":career_difficulty,"starting_budget_mode":starting_budget_mode,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"match_results":match_results,"market":market,"observed_players":observed_players,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
+	var data := {"save_version":2,"saved_at":Time.get_datetime_string_from_system(),"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"manager_name":manager_name,"career_difficulty":career_difficulty,"starting_budget_mode":starting_budget_mode,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"match_results":match_results,"market":market,"observed_players":observed_players,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"training_last_day":training_last_day,"training_last_season":training_last_season,"training_sessions":training_sessions,"training_last_message":training_last_message,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
 	# Preserve the last valid save before replacing it, so an interrupted write
 	# or damaged JSON can be recovered on the next launch.
 	var previous_file := FileAccess.open(SAVE_PATH, FileAccess.READ)
@@ -2585,6 +2753,10 @@ func _load_game() -> void:
 	lineup_ids = d.get("lineup_ids", [])
 	_repair_saved_player_ids()
 	training_focus = str(d.get("training_focus", "Equilibrio"))
+	training_last_day = int(d.get("training_last_day", -1))
+	training_last_season = int(d.get("training_last_season", -1))
+	training_sessions = int(d.get("training_sessions", 0))
+	training_last_message = str(d.get("training_last_message", "Nessuna sessione completata in questa carriera."))
 	last_season_message = str(d.get("last_season_message", ""))
 	pyramid_state = d.get("pyramid_state", {})
 	sponsor_contract = d.get("sponsor_contract", {})
