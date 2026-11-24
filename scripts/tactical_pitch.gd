@@ -95,25 +95,48 @@ func _draw_pitch(area: Rect2) -> void:
 
 func _draw_player(center: Vector2, slot: int, player: Dictionary) -> void:
 	var selected := slot == selected_slot or slot == dragging_slot
-	var radius := 21.0 if selected else 18.0
-	# Drop shadow, luminous rim and shirt disc.
-	draw_circle(center + Vector2(0, 4), radius + 2, Color(0, 0, 0, 0.28))
-	draw_circle(center, radius + 3, GOLD if selected else Color("#d9f8ff"))
-	draw_circle(center, radius, Color("#f4fbff") if selected else ACCENT)
-	draw_circle(center, radius - 3, Color("#10263a"))
+	var rating := int(player.get("rating", 0))
+	var kit := Color("#31b7cb")
+	var trim := Color("#eaf7fb")
+	var shadow := Color(0, 0, 0, 0.34)
+	var pulse := GOLD if selected else Color("#8cecff")
+	# Soft drop shadow and selected halo.
+	draw_circle(center + Vector2(0, 5), 22 if selected else 19, shadow)
+	if selected:
+		draw_arc(center, 27, 0, TAU, 48, Color(GOLD, 0.78), 2.5)
+		draw_circle(center, 24, Color(GOLD, 0.10))
+	# Shirt silhouette instead of a flat marker disc.
+	var shirt := PackedVector2Array([
+		center + Vector2(-10, -16), center + Vector2(-19, -11),
+		center + Vector2(-24, -2), center + Vector2(-18, 4),
+		center + Vector2(-13, 0), center + Vector2(-12, 15),
+		center + Vector2(12, 15), center + Vector2(13, 0),
+		center + Vector2(18, 4), center + Vector2(24, -2),
+		center + Vector2(19, -11), center + Vector2(10, -16),
+		center + Vector2(6, -10), center + Vector2(-6, -10)
+	])
+	draw_colored_polygon(shirt, pulse if selected else kit)
+	draw_polyline(PackedVector2Array([
+		center + Vector2(-10, -16), center + Vector2(-6, -10),
+		center + Vector2(0, -7), center + Vector2(6, -10),
+		center + Vector2(10, -16)
+	]), trim, 1.8)
+	draw_rect(Rect2(center + Vector2(-12, 13), Vector2(24, 3)), Color("#0c2436", 0.72), true)
 	var number := str(player.get("number", slot + 1))
 	var font := ThemeDB.fallback_font
-	draw_string(font, center + Vector2(0, 5), number, HORIZONTAL_ALIGNMENT_CENTER, 34, 13, Color.WHITE)
+	draw_string(font, center + Vector2(0, 7), number, HORIZONTAL_ALIGNMENT_CENTER, 30, 12, Color("#071522"))
 	var full_name := str(player.get("name", "Giocatore " + str(slot + 1)))
 	var words := full_name.split(" ")
 	var short_name := str(words[words.size() - 1]) if not words.is_empty() else full_name
-	if short_name.length() > 13:
-		short_name = short_name.substr(0, 12) + "…"
-	var label_width := 92.0
-	var label_rect := Rect2(center + Vector2(-label_width * 0.5, 25), Vector2(label_width, 19))
-	draw_rect(label_rect, Color("#071522", 0.88), true)
-	draw_string(font, center + Vector2(0, 39), short_name, HORIZONTAL_ALIGNMENT_CENTER, label_width, 10, Color("#f4f8ff"))
-
+	if short_name.length() > 12:
+		short_name = short_name.substr(0, 11) + "…"
+	var label_width := 94.0
+	var label_rect := Rect2(center + Vector2(-label_width * 0.5, 20), Vector2(label_width, 17))
+	draw_rect(label_rect, Color("#071522", 0.91), true)
+	draw_string(font, center + Vector2(0, 33), short_name, HORIZONTAL_ALIGNMENT_CENTER, label_width, 9, Color("#f4f8ff"))
+	var rating_text := str(rating)
+	draw_rect(Rect2(center + Vector2(-13, -38), Vector2(26, 15)), Color("#071522", 0.92), true)
+	draw_string(font, center + Vector2(0, -27), rating_text, HORIZONTAL_ALIGNMENT_CENTER, 26, 9, Color("#f5d98c"))
 func _draw() -> void:
 	var area := Rect2(Vector2(12, 14), Vector2(maxf(0, size.x - 24), maxf(0, size.y - 28)))
 	_draw_pitch(area)
