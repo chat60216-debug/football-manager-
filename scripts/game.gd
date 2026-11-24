@@ -1275,7 +1275,10 @@ func _show_formation() -> void:
 		var choice := OptionButton.new()
 		choice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		for p in players:
-			choice.add_item(str(p.get("name", "Giocatore")) + " • " + str(p.get("rating", 0)) + " OVR")
+			var availability_tag := " • INF." if int(p.get("injury", 0)) > 0 else " • SQ." if int(p.get("suspension", 0)) > 0 else ""
+			choice.add_item(str(p.get("name", "Giocatore")) + " • " + str(p.get("rating", 0)) + " OVR" + availability_tag)
+			if int(p.get("injury", 0)) > 0 or int(p.get("suspension", 0)) > 0:
+				choice.set_item_disabled(choice.item_count - 1, true)
 		var selected_index := 0
 		for j in range(players.size()):
 			if j < lineup_ids.size() and int(players[j].get("id", -1)) == int(lineup_ids[i]):
