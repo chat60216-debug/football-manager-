@@ -506,6 +506,7 @@ func _show_squad() -> void:
 		card.setup(p)
 		card.swap_requested.connect(_swap_players)
 		card.sell_requested.connect(_sell_player)
+		card.renew_requested.connect(_renew_player_contract)
 		grid.add_child(card)
 
 func _swap_players(source_id: int, target_id: int) -> void:
@@ -579,6 +580,7 @@ func _negotiate(index: int) -> void:
 		market_role.add_item(role)
 	content.add_child(market_role)
 	_button("INVIA OFFERTA",_submit_offer)
+	_button("CHIEDI PRESTITO (1 STAGIONE)",_submit_loan_offer)
 	_button("Torna al mercato",_show_market)
 
 func _submit_offer() -> void:
@@ -608,6 +610,54 @@ func _submit_offer() -> void:
 	_save_game()
 	_show_market()
 	_label("TRASFERIMENTO COMPLETATO: "+p.name+" è un nuovo giocatore!")
+
+func _submit_loan_offer() -> void:
+	if selected_market_player < 0 or selected_market_player >= market.size():
+		return
+	var source: Dictionary = market[selected_market_player]
+	var loan_fee := int(source.get("value", 0) * 0.08)
+	var loan_wage := int(source.get("wage", 0) * 0.5)
+	if cash < loan_fee or wage_budget < loan_wage:
+		_label("Prestito non possibile: fondi o budget ingaggi insufficienti.")
+		return
+	if randf() > 0.82:
+		_label("Il club proprietario ha rifiutato il prestito.")
+		return
+	var loanee: Dictionary = source.duplicate(true)
+	loanee["id"] = randi()
+	loanee["loan"] = true
+	loanee["parent_club"] = str(source.get("club", "Club proprietario"))
+	loanee["loan_fee"] = loan_fee
+	loanee["contract"] = 1
+	loanee["wage"] = loan_wage
+	loanee["fitness"] = 100
+	loanee["morale"] = 78
+	players.append(loanee)
+	cash -= loan_fee
+	wage_budget -= loan_wage
+	market.remove_at(selected_market_player)
+	selected_market_player = -1
+	_ensure_lineup()
+	_save_game()
+	_show_market()
+	_label("Prestito completato: " + str(loanee.get("name", "Giocatore")) + " arriva per una stagione.")
+
+func _renew_player_contract(player_id: int) -> void:
+	for p in players:
+		if int(p.get("id", -1)) == player_id:
+			var current_wage := int(p.get("wage", 0))
+			var new_wage := int(ceil(float(current_wage) * 1.1))
+			var increase := new_wage - current_wage
+			if increase > wage_budget:
+				status_label.text = "Budget ingaggi insufficiente per rinnovare."
+				return
+			p["contract"] = maxi(2, int(p.get("contract", 0)) + 2)
+			p["wage"] = new_wage
+			p["morale"] = mini(100, int(p.get("morale", 70)) + 8)
+			wage_budget -= increase
+			_save_game()
+			_show_squad()
+			return
 
 func _show_table() -> void:
 	_clear_content()
@@ -715,6 +765,10 @@ func _train_squad() -> void:
 func _new_season() -> void:
 	season += 1
 	day = 0
+	for i in range(players.size() - 1, -1, -1):
+		if bool(players[i].get("loan", false)):
+			wage_budget += int(players[i].get("wage", 0))
+			players.remove_at(i)
 	for p in players:
 		p.age = int(p.get("age", 20)) + 1
 		p.contract = maxi(0,int(p.contract)-1)
