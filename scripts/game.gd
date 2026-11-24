@@ -1920,9 +1920,11 @@ func _submit_loan_offer() -> void:
 	selected_market_player = -1
 	_ensure_lineup()
 	for prospect in observed_players:
-		if int(prospect.get("id", -1)) == int(loanee.get("id", -2)) or str(prospect.get("name", "")) == str(loanee.get("name", "")):
+		if int(prospect.get("id", -1)) == int(source.get("id", -2)) or str(prospect.get("name", "")) == str(loanee.get("name", "")):
 			prospect["scouting_status"] = "In prestito al tuo club"
-		_save_game()
+			prospect["scouting_report"] = true
+			prospect["id"] = int(loanee.get("id", -1))
+	_save_game()
 	_show_market()
 	_label("Prestito completato: " + str(loanee.get("name", "Giocatore")) + " arriva per una stagione.")
 
@@ -2843,12 +2845,8 @@ func _create_match_report(home: String, away: String, home_goals: int, away_goal
 	return {"home":home,"away":away,"home_goals":home_goals,"away_goals":away_goals,"events":events,"substitutions":substitutions,"played_ids":played_ids,"stats":match_stats,"date_label":"Giornata " + str(day + 1)}
 
 func _create_match_statistics(home: String, away: String, home_goals: int, away_goals: int) -> Dictionary:
-	var home_power := _club_power(home)
+	var home_power := _club_power(home) + 3
 	var away_power := _club_power(away)
-	if home == club_name:
-		home_power += 3
-	if away == club_name:
-		away_power += 3
 	var possession_home := clampi(roundi(50.0 + float(home_power - away_power) * 0.48 + randf_range(-7.0, 7.0)), 35, 65)
 	var shots_home := maxi(home_goals + 1, randi_range(7, 17) + int(float(home_power - away_power) / 9.0))
 	var shots_away := maxi(away_goals + 1, randi_range(7, 17) + int(float(away_power - home_power) / 9.0))
