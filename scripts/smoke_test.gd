@@ -57,6 +57,16 @@ func _run_smoke_test() -> void:
 		_fail("youth prospects did not age and persist into the next season")
 		return
 	var real_count: int = game.players.filter(func(p): return bool(p.get("real_player", false))).size()
+	var goalkeeper_candidates: Array = game.players.filter(func(p): return str(p.get("position", "")) == "POR")
+	if not goalkeeper_candidates.is_empty():
+		var starting_goalkeeper: Dictionary = {}
+		for squad_player in game.players:
+			if int(squad_player.get("id", -1)) == int(game.lineup_ids[0]):
+				starting_goalkeeper = squad_player
+				break
+		if str(starting_goalkeeper.get("position", "")) != "POR":
+			_fail("automatic lineup did not place a goalkeeper in the goalkeeper slot")
+			return
 	var team_rating_before: int = game._team_rating()
 	var outfield_id := int(game.lineup_ids[10])
 	for squad_player in game.players:
