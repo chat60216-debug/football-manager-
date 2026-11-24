@@ -180,6 +180,11 @@ func _new_career() -> void:
 	division = setup_division.get_item_text(setup_division.selected)
 	season = 2026
 	last_season_message = ""
+	pyramid_state.clear()
+	match_report.clear()
+	european_competitions.clear()
+	qualified_european_comp = ""
+	market_filter = "Tutti"
 	day = 0
 	cash = 2500000
 	wage_budget = 65000
@@ -199,9 +204,6 @@ func _new_career() -> void:
 	_generate_market()
 	youth_players.clear()
 	season_history.clear()
-	match_report.clear()
-	european_competitions.clear()
-	qualified_european_comp = ""
 	_generate_youth_intake()
 	cup_round = 0
 	cup_teams = [club_name] + CLUBS.slice(0, 7)
@@ -1140,6 +1142,7 @@ func _finish_season_and_move_club() -> void:
 	for i in range(divisions.size()):
 		var key := country + "|" + str(divisions[i])
 		var clubs: Array = pyramid_state.get(key, []).duplicate()
+		for team in promoted.get(key, []): clubs.erase(team)
 		for team in relegated.get(key, []): clubs.erase(team)
 		if i > 0:
 			var lower_key := country + "|" + str(divisions[i - 1])
