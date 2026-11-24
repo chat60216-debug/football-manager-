@@ -288,6 +288,14 @@ func _run_smoke_test() -> void:
 	if not loaned_player_found:
 		_fail("accepted loan was not marked as a temporary player")
 		return
+	var loaned_player_club_correct := false
+	for squad_player in game.players:
+		if bool(squad_player.get("loan", false)) and str(squad_player.get("club", "")) == game.club_name and str(squad_player.get("parent_club", "")) != "":
+			loaned_player_club_correct = true
+			break
+	if not loaned_player_club_correct:
+		_fail("loaned player did not move to the user's club while retaining the parent club")
+		return
 	var loan_save_file := FileAccess.open("user://dynasty_save.json", FileAccess.READ)
 	if loan_save_file == null:
 		_fail("accepted loan was not saved")
