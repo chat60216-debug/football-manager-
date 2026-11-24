@@ -151,6 +151,7 @@ func _show_setup() -> void:
 	_label("Divisione")
 	setup_division = OptionButton.new()
 	content.add_child(setup_division)
+	setup_division.item_selected.connect(func(_index): _update_setup_real_clubs())
 	_label("Scegli un club reale (facoltativo)")
 	setup_real_club = OptionButton.new()
 	content.add_child(setup_real_club)
@@ -408,6 +409,8 @@ func _show_home() -> void:
 		_label("Campionato terminato.")
 		_button("AVANZA ALLA NUOVA STAGIONE",_new_season)
 	_button("Salva carriera",_save_game)
+	if not match_report.is_empty():
+		_button("Rivedi ultima partita", _show_match_report)
 	_button("Impostazioni tattiche",_show_tactics)
 
 func _find_fixture(team: String) -> Dictionary:
@@ -436,12 +439,17 @@ func _play_matchday() -> void:
 		_update_result(home,away,hg,ag)
 		if home == club_name or away == club_name:
 			club_played = true
-			_apply_player_match(hg,ag)
-			cash += 80000+hg*7000
+			var substitutions := _simulate_substitutions()
+			match_report = _create_match_report(home, away, hg, ag, substitutions)
+			_apply_player_match(hg,ag, substitutions)
+			_update_board_after_match(hg, ag)
+			cash += 80000 + hg * 7000 + int(facilities.get("stadium", 1)) * 6000
+			cash += int(sponsor_contract.get("weekly", 0))
 			cash -= _weekly_wages()
 			if hg > ag:
 				cash += 45000
 	if not club_played:
+		cash += int(sponsor_contract.get("weekly", 0))
 		cash -= _weekly_wages()
 		for p in players:
 			p.fitness = mini(100,int(p.fitness)+5)
@@ -452,7 +460,10 @@ func _play_matchday() -> void:
 			p["suspension"] = maxi(0, int(p.get("suspension", 0)) - 1)
 	day += 1
 	_save_game()
-	_show_home()
+	if club_played and not match_report.is_empty():
+		_show_match_report()
+	else:
+		_show_home()
 
 func _goals_for_power(attack: int, defense: int) -> int:
 	var chance := clampf(1.25+float(attack-defense)/24.0,0.2,3.4)
@@ -592,6 +603,10 @@ func _show_formation() -> void:
 	)
 	content.add_child(modules)
 	var positions := _formation_positions()
+	var pitch = preload("res://scripts/tactical_pitch.gd").new()
+	pitch.set_lineup(players, lineup_ids, formation)
+	pitch.slots_swapped.connect(_swap_lineup_slots)
+	content.add_child(pitch)
 	for i in range(positions.size()):
 		var slot_index := i
 		var row := HBoxContainer.new()
@@ -615,8 +630,17 @@ func _show_formation() -> void:
 			_set_lineup_player(slot_index, option_index)
 		)
 		row.add_child(choice)
+	_label("Trascina i giocatori sul campo per scambiare le loro posizioni.")
 	_label("Media titolari: " + str(_team_rating()) + " OVR")
 	_button("Salva formazione", func(): _save_game(); _show_home())
+
+func _swap_lineup_slots(first_slot: int, second_slot: int) -> void:
+	if first_slot < 0 or second_slot < 0 or first_slot >= lineup_ids.size() or second_slot >= lineup_ids.size(): return
+	var temp := int(lineup_ids[first_slot])
+	lineup_ids[first_slot] = int(lineup_ids[second_slot])
+	lineup_ids[second_slot] = temp
+	_save_game()
+	_show_formation()
 
 func _set_lineup_player(slot_index: int, player_index: int) -> void:
 	if slot_index < 0 or slot_index >= 11 or player_index < 0 or player_index >= players.size():
@@ -631,16 +655,26 @@ func _set_lineup_player(slot_index: int, player_index: int) -> void:
 		lineup_ids[previous_slot] = old_id
 	_save_game()
 
-func _apply_player_match(goals: int, conceded: int) -> void:
+func _apply_player_match(goals: int, conceded: int, substitutions: Array = []) -> void:
 	_ensure_lineup()
 	var scorers: Array = []
+	var played_ids: Array = lineup_ids.duplicate()
+	for sub in substitutions:
+		played_ids.erase(int(sub.get("out_id", -1)))
+		played_ids.append(int(sub.get("in_id", -1)))
 	var fit_players: Array = players.filter(func(p): return int(p.get("injury", 0)) == 0)
 	for p in fit_players:
 		var is_starter := lineup_ids.has(int(p.get("id", -1)))
-		if is_starter:
+		var did_play := played_ids.has(int(p.get("id", -1)))
+		if did_play:
 			p["apps"] = int(p.get("apps", 0)) + 1
+			var match_rating := 6.2 + randf() * 1.5
+			if goals > conceded: match_rating += 0.35
+			elif goals < conceded: match_rating -= 0.35
+			p["last_rating"] = snappedf(clampf(match_rating, 4.5, 9.8), 0.1)
+		if is_starter:
 			p["fitness"] = maxi(35, int(p.get("fitness", 100)) - randi_range(6, 12))
-			if randf() < maxf(0.004, 0.014 - float(staff.get("physio", 0)) * 0.002):
+			if randf() < maxf(0.002, 0.014 - float(staff.get("physio", 0)) * 0.002 - float(facilities.get("medical", 1)) * 0.001):
 				p["injury"] = randi_range(2, 5)
 			if randf() < 0.025:
 				p["yellow"] = int(p.get("yellow", 0)) + 1
@@ -652,6 +686,8 @@ func _apply_player_match(goals: int, conceded: int) -> void:
 				p["suspension"] = maxi(int(p.get("suspension", 0)), 3)
 			if ["ATT", "AD", "AS", "COC"].has(str(p.get("position", ""))):
 				scorers.append(p)
+		elif did_play:
+			p["fitness"] = maxi(50, int(p.get("fitness", 100)) - randi_range(3, 6))
 		else:
 			p["fitness"] = mini(100, int(p.get("fitness", 100)) + 3)
 	for goal_index in range(goals):
@@ -863,6 +899,7 @@ func _show_cups() -> void:
 	else:
 		_label("La tua squadra è stata eliminata dalla coppa.")
 	_label("Competizioni UEFA: "+european_status)
+	_button("Apri Champions League / Europa League / Conference", func(): _show_tab("UEFA"))
 	_button("Visualizza classifica",func(): _show_tab("Classifica"))
 
 func _play_cup_round() -> void:
@@ -913,6 +950,7 @@ func _show_club() -> void:
 	content.add_child(focus)
 	_button("Svolgi allenamento (€25.000)", _train_squad)
 	_button("Apri formazione", _show_formation)
+	_button("Gestione società, sponsor e strutture", func(): _show_tab("Società"))
 	_button("Salva partita",_save_game)
 	_button("Carica partita",_load_game)
 	_button("Nuova stagione",_new_season)
