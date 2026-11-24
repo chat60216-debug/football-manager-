@@ -1437,6 +1437,25 @@ func _save_game() -> void:
 		if is_instance_valid(status_label):
 			status_label.text = "Carriera salvata sul dispositivo."
 
+
+func _repair_saved_player_ids() -> void:
+	var used: Dictionary = {}
+	var lineup_changed := false
+	for collection_index in range(3):
+		var collection: Array = players if collection_index == 0 else market if collection_index == 1 else youth_players
+		for p in collection:
+			var player_id := int(p.get("id", -1))
+			if used.has(player_id):
+				var replacement_id: int = randi()
+				while used.has(replacement_id): replacement_id = randi()
+				p["id"] = replacement_id
+				p["portrait_seed"] = replacement_id
+				player_id = replacement_id
+				if collection_index == 0: lineup_changed = true
+			used[player_id] = true
+	if lineup_changed:
+		lineup_ids.clear()
+
 func _load_game() -> void:
 	if not FileAccess.file_exists(SAVE_PATH):
 		_show_setup()
@@ -1473,6 +1492,7 @@ func _load_game() -> void:
 	tactics = loaded_tactics
 	formation = str(d.get("formation", "4-3-3"))
 	lineup_ids = d.get("lineup_ids", [])
+	_repair_saved_player_ids()
 	training_focus = str(d.get("training_focus", "Equilibrio"))
 	last_season_message = str(d.get("last_season_message", ""))
 	pyramid_state = d.get("pyramid_state", {})
