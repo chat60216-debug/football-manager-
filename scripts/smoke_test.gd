@@ -41,6 +41,50 @@ func _run_smoke_test() -> void:
 	if game.players.size() < 11:
 		_fail("career squad has fewer than 11 players")
 		return
+	# Training regression: development is gradual, weekly-limited and persistent.
+	var training_candidate: Dictionary = {}
+	for squad_player in game.players:
+		if int(squad_player.get("age", 30)) < 29 and int(squad_player.get("rating", 50)) < int(squad_player.get("potential", 90)):
+			training_candidate = squad_player
+			break
+	if training_candidate.is_empty():
+		_fail("no eligible young player was available for the training regression")
+		return
+	var training_player_id := int(training_candidate.get("id", -1))
+	training_candidate["training_xp"] = 90.0
+	var training_rating_before := int(training_candidate.get("rating", 0))
+	game.training_focus = "Tecnica"
+	game.training_last_day = -1
+	game.training_last_season = -1
+	game.training_sessions = 0
+	game.cash = 100000
+	game._show_tab("Allenamento")
+	await process_frame
+	if game.selected_tab != "Allenamento":
+		_fail("dedicated training centre did not open from navigation")
+		return
+	game._train_squad()
+	var trained_player: Dictionary = {}
+	for squad_player in game.players:
+		if int(squad_player.get("id", -2)) == training_player_id:
+			trained_player = squad_player
+			break
+	if trained_player.is_empty() or int(trained_player.get("rating", 0)) != training_rating_before + 1:
+		_fail("technical training did not convert accumulated progress into one overall point")
+		return
+	if float(trained_player.get("training_xp", 0.0)) >= 100.0 or int(game.training_sessions) != 1 or int(game.training_last_day) != int(game.day):
+		_fail("training progress or weekly session tracking is invalid")
+		return
+	var cash_after_training := int(game.cash)
+	game._train_squad()
+	if int(game.cash) != cash_after_training or int(game.training_sessions) != 1:
+		_fail("training could be repeated multiple times in the same matchweek")
+		return
+	var season_before_early_rollover := int(game.season)
+	game._new_season()
+	if int(game.season) != season_before_early_rollover:
+		_fail("career advanced to a new season before the league was completed")
+		return
 	var ai_power_first: int = game._club_power("Regression FC")
 	var ai_power_second: int = game._club_power("Regression FC")
 	if ai_power_first != ai_power_second:
@@ -164,6 +208,9 @@ func _run_smoke_test() -> void:
 	var saved_data = JSON.parse_string(save_file.get_as_text())
 	if typeof(saved_data) != TYPE_DICTIONARY or saved_data.get("observed_players", []).size() != 1:
 		_fail("scouting shortlist was not persisted in the career save")
+		return
+	if int(saved_data.get("training_sessions", 0)) != 1 or int(saved_data.get("training_last_day", -1)) != int(game.day):
+		_fail("training session history was not persisted in the career save")
 		return
 	if not FileAccess.file_exists("user://dynasty_save.json.bak"):
 		_fail("automatic career save backup was not created")
