@@ -238,6 +238,44 @@ func _run_smoke_test() -> void:
 	if not game.observed_players.is_empty():
 		_fail("scouting shortlist removal did not work")
 		return
+	# Loan regression: accepted loans must be added to the squad and saved even with no active scouting list.
+	if game.market.is_empty():
+		_fail("transfer market unexpectedly empty before loan regression")
+		return
+	game.cash = 5000000
+	game.wage_budget = 1000000
+	game.selected_market_player = 0
+	var players_before_loan := game.players.size()
+	for _attempt in range(60):
+		if game.players.size() > players_before_loan:
+			break
+		game._submit_loan_offer()
+	if game.players.size() != players_before_loan + 1:
+		_fail("loan offer never produced an accepted loan in repeated attempts")
+		return
+	var loaned_player_found := false
+	for squad_player in game.players:
+		if bool(squad_player.get("loan", false)):
+			loaned_player_found = true
+			break
+	if not loaned_player_found:
+		_fail("accepted loan was not marked as a temporary player")
+		return
+	var loan_save_file := FileAccess.open("user://dynasty_save.json", FileAccess.READ)
+	if loan_save_file == null:
+		_fail("accepted loan was not saved")
+		return
+	var loan_saved_data = JSON.parse_string(loan_save_file.get_as_text())
+	loan_save_file.close()
+	var saved_loan_found := false
+	if typeof(loan_saved_data) == TYPE_DICTIONARY:
+		for saved_player in loan_saved_data.get("players", []):
+			if bool(saved_player.get("loan", false)):
+				saved_loan_found = true
+				break
+	if not saved_loan_found:
+		_fail("accepted loan did not persist when the scouting shortlist was empty")
+		return
 	game._show_formation()
 	await process_frame
 	var pitch_node: Control = null
