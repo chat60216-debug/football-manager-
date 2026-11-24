@@ -678,7 +678,7 @@ func _show_formation() -> void:
 	var positions := _formation_positions()
 	var pitch = preload("res://scripts/tactical_pitch.gd").new()
 	pitch.set_lineup(players, lineup_ids, formation)
-	pitch.slots_swapped.connect(_swap_lineup_slots)
+	pitch.slots_swapped.connect(Callable(self, "_swap_lineup_slots"))
 	content.add_child(pitch)
 	for i in range(positions.size()):
 		var slot_index := i
