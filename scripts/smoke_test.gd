@@ -97,6 +97,9 @@ func _run_smoke_test() -> void:
 	if int(game.season) != season_before_early_rollover:
 		_fail("career advanced to a new season before the league was completed")
 		return
+	if game._money(1234567) != "1.234.567" or game._money(-250000) != "-250.000":
+		_fail("localized money formatting did not group thousands correctly")
+		return
 	var ai_power_first: int = game._club_power("Regression FC")
 	var ai_power_second: int = game._club_power("Regression FC")
 	if ai_power_first != ai_power_second:
