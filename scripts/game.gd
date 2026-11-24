@@ -194,6 +194,7 @@ func _new_career() -> void:
 	_generate_league()
 	_initialise_pyramid()
 	_initialise_club_business()
+	_build_european_competitions()
 	_generate_market()
 	youth_players.clear()
 	season_history.clear()
@@ -276,6 +277,9 @@ func _make_player(index: int) -> Dictionary:
 	return {"id":randi(),"portrait_seed":randi(),"name":FIRST.pick_random()+" "+LAST.pick_random(),"position":pos,"age":age,"rating":rating,"potential":mini(92,rating+randi_range(2,20)),"wage":randi_range(900,4200),"value":rating*rating*1200,"morale":randi_range(65,90),"fitness":randi_range(82,100),"injury":0,"contract":randi_range(1,4),"role":ROLES.pick_random(),"goals":0,"assists":0,"apps":0,"yellow":0,"red":0}
 
 func _league_team_names() -> Array:
+	var pyramid_key := country + "|" + division
+	if pyramid_state.has(pyramid_key):
+		return pyramid_state[pyramid_key].duplicate()
 	var real_code := _competition_code(country, division)
 	if real_code != "" and real_roster_db.has(real_code):
 		var real_clubs: Dictionary = real_roster_db[real_code].get("clubs", {})
@@ -979,44 +983,142 @@ func _train_squad() -> void:
 	_show_club()
 
 
-func _finish_season_and_move_club() -> void:
-	if league.is_empty():
+
+func _initialise_pyramid() -> void:
+	if not pyramid_state.is_empty():
 		return
-	var sorted: Array = league.duplicate()
-	sorted.sort_custom(func(a, b):
+	var old_division := division
+	for div in DIVISIONS.get(country, []):
+		division = str(div)
+		var names: Array = _league_team_names()
+		if division == old_division and not names.has(club_name):
+			if names.size() > 0: names.pop_back()
+			names.append(club_name)
+		pyramid_state[country + "|" + division] = names
+	division = old_division
+
+func _simulate_ai_table(teams: Array) -> Array:
+	var table: Array = []
+	for team in teams:
+		var strength := 55 + absi(hash(str(team) + str(season))) % 27
+		var points := clampi(25 + strength + randi_range(-18, 18), 20, 90)
+		table.append({"name":str(team),"pts":points,"gf":randi_range(25,75),"ga":randi_range(25,70)})
+	table.sort_custom(func(a, b):
+		if int(a.get("pts", 0)) == int(b.get("pts", 0)):
+			return int(a.get("gf", 0)) - int(a.get("ga", 0)) > int(b.get("gf", 0)) - int(b.get("ga", 0))
+		return int(a.get("pts", 0)) > int(b.get("pts", 0))
+	)
+	return table
+
+func _playoff_winner(table: Array) -> String:
+	if table.size() < 5:
+		return str(table[0].get("name", "")) if not table.is_empty() else ""
+	var semi_a := str(table[1].get("name", ""))
+	var semi_b := str(table[4].get("name", ""))
+	var semi_c := str(table[2].get("name", ""))
+	var semi_d := str(table[3].get("name", ""))
+	var winner_a := _playoff_match_winner(semi_a, semi_b)
+	var winner_b := _playoff_match_winner(semi_c, semi_d)
+	return _playoff_match_winner(winner_a, winner_b)
+
+func _playoff_match_winner(a: String, b: String) -> String:
+	var a_power := _club_power(a)
+	var b_power := _club_power(b)
+	var chance := clampf(0.5 + float(a_power - b_power) / 120.0, 0.2, 0.8)
+	return a if randf() < chance else b
+
+func _finish_season_and_move_club() -> void:
+	if league.is_empty() or day < fixtures.size():
+		last_season_message = "Completa tutte le giornate prima di chiudere la stagione."
+		return
+	_initialise_pyramid()
+	var divisions: Array = DIVISIONS.get(country, [])
+	var original_division := division
+	var original_index := divisions.find(original_division)
+	var current_key := country + "|" + original_division
+	var current_table: Array = league.duplicate()
+	current_table.sort_custom(func(a, b):
 		if int(a.get("pts", 0)) == int(b.get("pts", 0)):
 			var gd_a := int(a.get("gf", 0)) - int(a.get("ga", 0))
 			var gd_b := int(b.get("gf", 0)) - int(b.get("ga", 0))
-			if gd_a == gd_b:
-				return int(a.get("gf", 0)) > int(b.get("gf", 0))
+			if gd_a == gd_b: return int(a.get("gf", 0)) > int(b.get("gf", 0))
 			return gd_a > gd_b
 		return int(a.get("pts", 0)) > int(b.get("pts", 0))
 	)
 	var position := -1
-	for i in range(sorted.size()):
-		if str(sorted[i].get("name", "")) == club_name:
+	for i in range(current_table.size()):
+		if str(current_table[i].get("name", "")) == club_name:
 			position = i
 			break
 	if position >= 0:
-		season_history.append({"season":season,"division":division,"position":position + 1,"teams":sorted.size(),"points":int(sorted[position].get("pts", 0))})
-		if season_history.size() > 12:
-			season_history.pop_front()
-	var divisions: Array = DIVISIONS.get(country, [])
-	var current_index := divisions.find(division)
-	if current_index < 0 or position < 0:
-		return
-	if position == 0 and current_index < divisions.size() - 1:
-		division = str(divisions[current_index + 1])
-		cash += 1500000
-		last_season_message = "Promozione conquistata: " + division
-	elif position >= sorted.size() - 3 and current_index > 0:
-		division = str(divisions[current_index - 1])
-		cash = maxi(0, cash - 300000)
-		last_season_message = "Retrocessione: nuova divisione " + division
+		season_history.append({"season":season,"division":original_division,"position":position + 1,"teams":current_table.size(),"points":int(current_table[position].get("pts", 0))})
+		if season_history.size() > 12: season_history.pop_front()
+	var rankings: Dictionary = {}
+	for div in divisions:
+		var key := country + "|" + str(div)
+		var teams: Array = pyramid_state.get(key, [])
+		if key == current_key:
+			rankings[key] = current_table
+		else:
+			rankings[key] = _simulate_ai_table(teams)
+	var promoted: Dictionary = {}
+	var relegated: Dictionary = {}
+	for i in range(divisions.size()):
+		var key := country + "|" + str(divisions[i])
+		var table: Array = rankings.get(key, [])
+		if table.is_empty(): continue
+		if i < divisions.size() - 1:
+			var playoff := _playoff_winner(table)
+			var up: Array = [str(table[0].get("name", ""))]
+			if playoff != "" and not up.has(playoff): up.append(playoff)
+			promoted[key] = up
+		if i > 0:
+			var down: Array = []
+			for j in range(maxi(0, table.size() - 2), table.size()):
+				down.append(str(table[j].get("name", "")))
+			relegated[key] = down
+	var new_state: Dictionary = {}
+	for i in range(divisions.size()):
+		var key := country + "|" + str(divisions[i])
+		var clubs: Array = pyramid_state.get(key, []).duplicate()
+		for team in relegated.get(key, []): clubs.erase(team)
+		if i > 0:
+			var lower_key := country + "|" + str(divisions[i - 1])
+			for team in promoted.get(lower_key, []):
+				if not clubs.has(team): clubs.append(team)
+		new_state[key] = clubs
+	pyramid_state = new_state
+	var new_division := original_division
+	for div in divisions:
+		if pyramid_state.get(country + "|" + str(div), []).has(club_name):
+			new_division = str(div)
+			break
+	if new_division != original_division:
+		if divisions.find(new_division) > original_index:
+			cash += 1500000
+			last_season_message = "PROMOZIONE! " + club_name + " sale in " + new_division + "."
+		else:
+			cash = maxi(0, cash - 300000)
+			last_season_message = "RETROCESSIONE: " + club_name + " scende in " + new_division + "."
+		division = new_division
 	else:
-		last_season_message = "Stagione conclusa: permanenza in " + division
+		last_season_message = "Stagione conclusa: " + str(position + 1) + "° posto in " + original_division + "."
+	qualified_european_comp = ""
+	if original_index == divisions.size() - 1 and position >= 0:
+		if position == 0:
+			qualified_european_comp = "UEFA Champions League"
+		elif position <= 2:
+			qualified_european_comp = "UEFA Europa League"
+		elif position <= 4:
+			qualified_european_comp = "UEFA Conference League"
+	if cup_winner == club_name and qualified_european_comp == "":
+		qualified_european_comp = "UEFA Europa League"
+	european_status = "Qualificato: " + qualified_european_comp if qualified_european_comp != "" else "Non qualificato"
 
 func _new_season() -> void:
+	if day < fixtures.size():
+		_label("Devi completare il campionato prima di avviare una nuova stagione.")
+		return
 	_finish_season_and_move_club()
 	season += 1
 	day = 0
@@ -1041,6 +1143,8 @@ func _new_season() -> void:
 			p["rating"] = mini(int(p.get("potential", 90)), int(p.get("rating", 50)) + randi_range(0, 2))
 	_generate_league()
 	_generate_youth_intake()
+	_build_european_competitions()
+	board_objective = {"type":"points","target":35,"progress":0,"reward":600000,"label":"Raggiungi 35 punti in campionato"}
 	cup_round = 0
 	cup_teams = [club_name]+CLUBS.slice(0,7)
 	cup_winner = ""
