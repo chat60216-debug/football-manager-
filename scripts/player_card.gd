@@ -70,7 +70,7 @@ func _progress_row(parent: VBoxContainer, caption: String, value: int, tint: Col
 
 func setup(data: Dictionary) -> void:
 	player = data
-	custom_minimum_size = Vector2(190, 326)
+	custom_minimum_size = Vector2(250, 354)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var starter := bool(player.get("starting_xi", false))
 	var captain := bool(player.get("captain", false))
@@ -95,7 +95,7 @@ func setup(data: Dictionary) -> void:
 	add_child(box)
 
 	var hero := PanelContainer.new()
-	hero.custom_minimum_size = Vector2(0, 120)
+	hero.custom_minimum_size = Vector2(0, 142)
 	var hero_style := StyleBoxFlat.new()
 	hero_style.bg_color = Color("#0c1a2a")
 	hero_style.border_color = Color("#314b65")
@@ -104,7 +104,7 @@ func setup(data: Dictionary) -> void:
 	hero.add_theme_stylebox_override("panel", hero_style)
 	box.add_child(hero)
 	var portrait = preload("res://scripts/player_portrait.gd").new()
-	portrait.custom_minimum_size = Vector2(0, 116)
+	portrait.custom_minimum_size = Vector2(0, 138)
 	portrait.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	portrait.seed_value = int(player.get("portrait_seed", player.get("id", 1)))
 	portrait.player_name = str(player.get("name", "Player"))
