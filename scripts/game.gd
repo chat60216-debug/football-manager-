@@ -20,6 +20,7 @@ var players: Array = []
 var league: Array = []
 var fixtures: Array = []
 var market: Array = []
+var observed_players: Array = []
 var cup_round := 0
 var cup_teams: Array = []
 var cup_winner := ""
@@ -1019,6 +1020,7 @@ func _play_matchday() -> void:
 		if int(p.get("suspension", 0)) > 0:
 			p["suspension"] = maxi(0, int(p.get("suspension", 0)) - 1)
 	day += 1
+	_advance_scouting_reports()
 	_save_game()
 	if club_played and not match_report.is_empty():
 		_show_match_report()
@@ -1404,12 +1406,46 @@ func _sell_player(player_id: int) -> void:
 
 func _show_market() -> void:
 	_clear_content()
-	_label("MERCATO TRASFERIMENTI",22)
-	_label("Cassa: €"+_money(cash)+" • Budget ingaggi: €"+_money(wage_budget))
+	_label("DYNASTY TRANSFER ROOM", 26)
+	_label("Mercato, scouting e trattative  •  Cassa: €" + _money(cash) + "  •  Budget ingaggi: €" + _money(wage_budget), 14)
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 10)
+	content.add_child(tabs)
+	var market_tab := Button.new()
+	market_tab.text = "MERCATO"
+	market_tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	market_tab.disabled = true
+	tabs.add_child(market_tab)
+	var observed_tab := Button.new()
+	observed_tab.text = "OSSERVATI  (" + str(observed_players.size()) + ")"
+	observed_tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	observed_tab.pressed.connect(_show_observed_players)
+	tabs.add_child(observed_tab)
+	var scout_summary := PanelContainer.new()
+	content.add_child(scout_summary)
+	var scout_row := HBoxContainer.new()
+	scout_summary.add_child(scout_row)
+	var scout_info := VBoxContainer.new()
+	scout_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scout_row.add_child(scout_info)
+	var scout_title := Label.new()
+	scout_title.text = "RETE OSSERVATORI"
+	scout_title.add_theme_color_override("font_color", Color("#d6b66f"))
+	scout_info.add_child(scout_title)
+	var scout_description := Label.new()
+	scout_description.text = "Invia un osservatore su un calciatore: dopo alcuni turni riceverai un rapporto più completo su potenziale e valore."
+	scout_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	scout_info.add_child(scout_description)
+	var scout_count := Label.new()
+	scout_count.text = str(observed_players.size()) + " profili monitorati"
+	scout_count.add_theme_font_size_override("font_size", 20)
+	scout_count.add_theme_color_override("font_color", Color("#e5bd69"))
+	scout_row.add_child(scout_count)
 	var filter := OptionButton.new()
-	for option in ["Tutti","Calciatori reali","Giovani U21","Occasioni sotto €2M","Top player OVR 75+"]:
+	var filter_options := ["Tutti","Calciatori reali","Giovani U21","Occasioni sotto €2M","Top player OVR 75+"]
+	for option in filter_options:
 		filter.add_item(option)
-	filter.select(["Tutti","Calciatori reali","Giovani U21","Occasioni sotto €2M","Top player OVR 75+"].find(market_filter))
+	filter.select(maxi(0, filter_options.find(market_filter)))
 	filter.item_selected.connect(func(i):
 		market_filter = filter.get_item_text(i)
 		_show_market()
@@ -1426,11 +1462,168 @@ func _show_market() -> void:
 		if market_filter == "Occasioni sotto €2M" and value >= 2000000: continue
 		if market_filter == "Top player OVR 75+" and rating < 75: continue
 		var idx := i
-		var label := str(p.get("name", "Giocatore")) + " | " + str(p.get("position", "")) + " | " + str(rating) + " OVR | " + str(age) + " anni | POT " + str(p.get("potential", rating)) + " | €" + _money(value)
-		_button(label,func(): _negotiate(idx))
+		var card := PanelContainer.new()
+		content.add_child(card)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		card.add_child(row)
+		var portrait = preload("res://scripts/player_portrait.gd").new()
+		portrait.custom_minimum_size = Vector2(58, 68)
+		portrait.seed_value = int(p.get("portrait_seed", p.get("id", 1)))
+		row.add_child(portrait)
+		var bio := VBoxContainer.new()
+		bio.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(bio)
+		var name_label := Label.new()
+		name_label.text = str(p.get("name", "Giocatore")) + "  •  " + str(p.get("position", ""))
+		name_label.add_theme_font_size_override("font_size", 16)
+		bio.add_child(name_label)
+		var detail := Label.new()
+		detail.text = str(rating) + " OVR  •  " + str(age) + " anni  •  " + str(p.get("club", "Svincolato")) + "  •  €" + _money(value)
+		detail.add_theme_font_size_override("font_size", 11)
+		detail.add_theme_color_override("font_color", Color("#9eafc1"))
+		bio.add_child(detail)
+		var actions := VBoxContainer.new()
+		row.add_child(actions)
+		var observe := Button.new()
+		var already_observed := _is_player_observed(int(p.get("id", -1)))
+		observe.text = "GIÀ OSSERVATO" if already_observed else "OSSERVA"
+		observe.disabled = already_observed
+		observe.custom_minimum_size = Vector2(124, 34)
+		observe.pressed.connect(func(): _observe_market_player(idx))
+		actions.add_child(observe)
+		var negotiate := Button.new()
+		negotiate.text = "TRATTA"
+		negotiate.custom_minimum_size = Vector2(124, 34)
+		negotiate.pressed.connect(func(): _negotiate(idx))
+		actions.add_child(negotiate)
 		shown += 1
 	if shown == 0:
 		_label("Nessun giocatore corrisponde al filtro. Cambia selezione.")
+
+func _is_player_observed(player_id: int) -> bool:
+	for prospect in observed_players:
+		if int(prospect.get("id", -2)) == player_id:
+			return true
+	return false
+
+func _observe_market_player(index: int) -> void:
+	if index < 0 or index >= market.size():
+		return
+	var target: Dictionary = market[index].duplicate(true)
+	var player_id := int(target.get("id", -1))
+	if _is_player_observed(player_id):
+		_show_market()
+		return
+	target["scouting_status"] = "In osservazione"
+	target["scouting_days"] = maxi(1, 3 - int(staff.get("scout", 0)))
+	target["scouting_assigned_day"] = day
+	target["scouting_report"] = false
+	observed_players.append(target)
+	_save_game()
+	_show_observed_players()
+
+func _advance_scouting_reports() -> void:
+	for prospect in observed_players:
+		if str(prospect.get("scouting_status", "")) == "In osservazione":
+			var remaining := maxi(0, int(prospect.get("scouting_days", 1)) - 1)
+			prospect["scouting_days"] = remaining
+			if remaining == 0:
+				prospect["scouting_status"] = "Report completo"
+				prospect["scouting_report"] = true
+
+func _show_observed_players() -> void:
+	_clear_content()
+	_label("DYNASTY SCOUTING  /  RAPPORTI OSSERVATORI", 25)
+	_label("Tutti i calciatori sui quali hai assegnato un osservatore, con lo stato aggiornato delle relazioni.", 14)
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 10)
+	content.add_child(tabs)
+	var market_tab := Button.new()
+	market_tab.text = "TORNA AL MERCATO"
+	market_tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	market_tab.pressed.connect(_show_market)
+	tabs.add_child(market_tab)
+	var observed_tab := Button.new()
+	observed_tab.text = "OSSERVATI  (" + str(observed_players.size()) + ")"
+	observed_tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	observed_tab.disabled = true
+	tabs.add_child(observed_tab)
+	var active_count := 0
+	for prospect in observed_players:
+		if str(prospect.get("scouting_status", "")) == "In osservazione":
+			active_count += 1
+	var summary := PanelContainer.new()
+	content.add_child(summary)
+	var summary_label := Label.new()
+	summary_label.text = str(active_count) + " osservazioni in corso   •   " + str(observed_players.size() - active_count) + " rapporti completati   •   Staff scouting livello " + str(staff.get("scout", 0))
+	summary_label.add_theme_color_override("font_color", Color("#e5bd69"))
+	summary.add_child(summary_label)
+	if observed_players.is_empty():
+		_label("Non hai ancora inviato osservatori. Vai al mercato e premi OSSERVA sulla scheda di un calciatore.")
+		return
+	for prospect in observed_players:
+		var player_id := int(prospect.get("id", -1))
+		var card := PanelContainer.new()
+		content.add_child(card)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		card.add_child(row)
+		var portrait = preload("res://scripts/player_portrait.gd").new()
+		portrait.custom_minimum_size = Vector2(76, 88)
+		portrait.seed_value = int(prospect.get("portrait_seed", player_id))
+		row.add_child(portrait)
+		var info := VBoxContainer.new()
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(info)
+		var name_label := Label.new()
+		name_label.text = str(prospect.get("name", "Giocatore")) + "  •  " + str(prospect.get("position", ""))
+		name_label.add_theme_font_size_override("font_size", 17)
+		info.add_child(name_label)
+		var status := str(prospect.get("scouting_status", "In osservazione"))
+		var club_line := Label.new()
+		club_line.text = str(prospect.get("club", "Club sconosciuto")) + "  •  " + str(prospect.get("age", "?")) + " anni  •  " + str(prospect.get("rating", "?")) + " OVR"
+		club_line.add_theme_font_size_override("font_size", 12)
+		club_line.add_theme_color_override("font_color", Color("#9eafc1"))
+		info.add_child(club_line)
+		var status_line := Label.new()
+		if status == "In osservazione":
+			status_line.text = "IN OSSERVAZIONE  •  " + str(prospect.get("scouting_days", 1)) + " turni al rapporto"
+			status_line.add_theme_color_override("font_color", Color("#e5bd69"))
+		else:
+			status_line.text = "REPORT COMPLETO  •  POT " + str(prospect.get("potential", prospect.get("rating", 50))) + "  •  Valore €" + _money(int(prospect.get("value", 0)))
+			status_line.add_theme_color_override("font_color", Color("#83d6a5"))
+		info.add_child(status_line)
+		var actions := VBoxContainer.new()
+		row.add_child(actions)
+		var treat := Button.new()
+		treat.text = "APRI TRATTATIVA"
+		treat.disabled = status != "Report completo" or not _market_contains_player(player_id)
+		treat.pressed.connect(func(): _negotiate_market_player_id(player_id))
+		actions.add_child(treat)
+		var remove := Button.new()
+		remove.text = "RIMUOVI"
+		remove.pressed.connect(func(): _remove_observed_player(player_id))
+		actions.add_child(remove)
+
+func _market_contains_player(player_id: int) -> bool:
+	for p in market:
+		if int(p.get("id", -2)) == player_id:
+			return true
+	return false
+
+func _negotiate_market_player_id(player_id: int) -> void:
+	for i in range(market.size()):
+		if int(market[i].get("id", -2)) == player_id:
+			_negotiate(i)
+			return
+
+func _remove_observed_player(player_id: int) -> void:
+	for i in range(observed_players.size() - 1, -1, -1):
+		if int(observed_players[i].get("id", -2)) == player_id:
+			observed_players.remove_at(i)
+	_save_game()
+	_show_observed_players()
 
 func _negotiate(index: int) -> void:
 	if index < 0 or index >= market.size():
@@ -2076,7 +2269,7 @@ func _money(value: int) -> String:
 	return str(value)
 
 func _save_game() -> void:
-	var data := {"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"manager_name":manager_name,"career_difficulty":career_difficulty,"starting_budget_mode":starting_budget_mode,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"market":market,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
+	var data := {"youth_players":youth_players,"staff":staff,"season_history":season_history,"club_name":club_name,"manager_name":manager_name,"career_difficulty":career_difficulty,"starting_budget_mode":starting_budget_mode,"country":country,"division":division,"season":season,"day":day,"cash":cash,"wage_budget":wage_budget,"players":players,"league":league,"fixtures":fixtures,"market":market,"observed_players":observed_players,"cup_round":cup_round,"cup_teams":cup_teams,"cup_winner":cup_winner,"european_status":european_status,"tactics":tactics,"formation":formation,"lineup_ids":lineup_ids,"training_focus":training_focus,"last_season_message":last_season_message,"pyramid_state":pyramid_state,"sponsor_contract":sponsor_contract,"facilities":facilities,"board_objective":board_objective,"board_confidence":board_confidence,"match_report":match_report,"european_competitions":european_competitions,"qualified_european_comp":qualified_european_comp}
 	var file := FileAccess.open(SAVE_PATH,FileAccess.WRITE)
 	if file:
 		file.store_string(JSON.stringify(data))
@@ -2131,6 +2324,7 @@ func _load_game() -> void:
 	league = d.get("league",[])
 	fixtures = d.get("fixtures",[])
 	market = d.get("market",[])
+	observed_players = d.get("observed_players", [])
 	cup_round = int(d.get("cup_round",0))
 	cup_teams = d.get("cup_teams",[])
 	cup_winner = str(d.get("cup_winner",""))
