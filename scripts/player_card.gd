@@ -2,6 +2,7 @@ extends PanelContainer
 class_name DynastyPlayerCard
 
 signal swap_requested(source_id: int, target_id: int)
+signal sell_requested(player_id: int)
 
 var player: Dictionary = {}
 
@@ -35,6 +36,10 @@ func setup(data: Dictionary) -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_font_size_override("font_size", 10)
 	box.add_child(hint)
+	var sell := Button.new()
+	sell.text = "Vendi"
+	sell.pressed.connect(func(): sell_requested.emit(int(player.get("id", -1))))
+	box.add_child(sell)
 
 func _get_drag_data(_at_position: Vector2) -> Variant:
 	var preview := Label.new()
