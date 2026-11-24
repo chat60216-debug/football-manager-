@@ -1148,7 +1148,7 @@ func _new_season() -> void:
 	cup_round = 0
 	cup_teams = [club_name]+CLUBS.slice(0,7)
 	cup_winner = ""
-	european_status = "Non qualificato"
+	european_status = "In UEFA: " + qualified_european_comp if qualified_european_comp != "" else "Non qualificato"
 	_generate_market()
 	cash += 1000000
 	_ensure_lineup()
@@ -1511,4 +1511,170 @@ func _upgrade_facility(key: String) -> void:
 		_generate_youth_intake()
 	_save_game()
 	_show_society()
+
+
+func _make_european_competition(title: String, teams: Array) -> Dictionary:
+	var chosen: Array = teams.slice(0, 8)
+	var groups := [chosen.slice(0, 4), chosen.slice(4, 8)]
+	var tables: Dictionary = {}
+	for team in chosen:
+		tables[str(team)] = {"name":str(team),"p":0,"w":0,"d":0,"l":0,"gf":0,"ga":0,"pts":0}
+	return {"name":title,"teams":chosen,"groups":groups,"tables":tables,"phase":"groups","round":0,"semi_pairs":[],"finalists":[],"winner":"","history":[]}
+
+func _build_european_competitions() -> void:
+	var pool: Array = []
+	var old_country := country
+	var old_division := division
+	for c in COUNTRIES:
+		country = str(c)
+		var options: Array = DIVISIONS.get(country, [])
+		if options.is_empty(): continue
+		division = str(options[options.size() - 1])
+		for team in _league_team_names():
+			if not pool.has(team): pool.append(team)
+	country = old_country
+	division = old_division
+	pool.shuffle()
+	var target := qualified_european_comp
+	var comp_names := ["UEFA Champions League","UEFA Europa League","UEFA Conference League"]
+	european_competitions.clear()
+	for name in comp_names:
+		var teams: Array = []
+		if name == target:
+			teams.append(club_name)
+		while teams.size() < 8 and pool.size() > 0:
+			var next_team: String = str(pool.pop_front())
+			if not teams.has(next_team) and next_team != club_name:
+				teams.append(next_team)
+		while teams.size() < 8:
+			var filler := "Continental FC " + str(teams.size() + 1) + " " + name.replace("UEFA ", "")
+			if not teams.has(filler): teams.append(filler)
+		european_competitions[name] = _make_european_competition(name, teams)
+
+func _european_match(a: String, b: String, comp: Dictionary) -> Dictionary:
+	var a_power := _club_power(a)
+	var b_power := _club_power(b)
+	var hg := _goals_for_power(a_power + 2, b_power)
+	var ag := _goals_for_power(b_power, a_power + 2)
+	var tables: Dictionary = comp.get("tables", {})
+	var home: Dictionary = tables.get(a, {})
+	var away: Dictionary = tables.get(b, {})
+	if not home.is_empty() and not away.is_empty():
+		home["p"] = int(home.get("p", 0)) + 1
+		away["p"] = int(away.get("p", 0)) + 1
+		home["gf"] = int(home.get("gf", 0)) + hg
+		home["ga"] = int(home.get("ga", 0)) + ag
+		away["gf"] = int(away.get("gf", 0)) + ag
+		away["ga"] = int(away.get("ga", 0)) + hg
+		if hg > ag:
+			home["w"] = int(home.get("w", 0)) + 1
+			home["pts"] = int(home.get("pts", 0)) + 3
+			away["l"] = int(away.get("l", 0)) + 1
+		elif hg < ag:
+			away["w"] = int(away.get("w", 0)) + 1
+			away["pts"] = int(away.get("pts", 0)) + 3
+			home["l"] = int(home.get("l", 0)) + 1
+		else:
+			home["d"] = int(home.get("d", 0)) + 1
+			away["d"] = int(away.get("d", 0)) + 1
+			home["pts"] = int(home.get("pts", 0)) + 1
+			away["pts"] = int(away.get("pts", 0)) + 1
+	if a == club_name or b == club_name:
+		var subs := _simulate_substitutions()
+		match_report = _create_match_report(a, b, hg, ag, subs)
+		_apply_player_match(hg, ag, subs)
+	return {"home":a,"away":b,"hg":hg,"ag":ag}
+
+func _group_standings(group: Array, comp: Dictionary) -> Array:
+	var tables: Dictionary = comp.get("tables", {})
+	var ranked: Array = []
+	for team in group:
+		ranked.append(tables.get(str(team), {"name":str(team),"pts":0,"gf":0,"ga":0}))
+	ranked.sort_custom(func(a, b):
+		if int(a.get("pts", 0)) == int(b.get("pts", 0)):
+			var gd_a := int(a.get("gf", 0)) - int(a.get("ga", 0))
+			var gd_b := int(b.get("gf", 0)) - int(b.get("ga", 0))
+			if gd_a == gd_b: return int(a.get("gf", 0)) > int(b.get("gf", 0))
+			return gd_a > gd_b
+		return int(a.get("pts", 0)) > int(b.get("pts", 0))
+	)
+	return ranked
+
+func _play_european_round(key: String) -> void:
+	if not european_competitions.has(key): return
+	var comp: Dictionary = european_competitions[key]
+	var phase := str(comp.get("phase", "groups"))
+	if phase == "groups":
+		var round_index := int(comp.get("round", 0))
+		var pairings := [[[0,1],[2,3]],[[0,2],[1,3]],[[0,3],[1,2]]]
+		var groups: Array = comp.get("groups", [])
+		for group in groups:
+			if round_index >= pairings.size(): continue
+			for pair in pairings[round_index]:
+				var a := str(group[int(pair[0])])
+				var b := str(group[int(pair[1])])
+				var result := _european_match(a, b, comp)
+				comp["history"].append({"phase":"groups","round":round_index + 1,"home":a,"away":b,"hg":result.hg,"ag":result.ag})
+		comp["round"] = round_index + 1
+		if int(comp["round"]) >= 3:
+			var semi: Array = []
+			for group_index in range(groups.size()):
+				var table := _group_standings(groups[group_index], comp)
+				semi.append(str(table[0].get("name", "")))
+				semi.append(str(table[1].get("name", "")))
+			comp["semi_pairs"] = [[semi[0], semi[3]], [semi[2], semi[1]]]
+			comp["phase"] = "semi"
+	elif phase == "semi":
+		var pairs: Array = comp.get("semi_pairs", [])
+		var finalists: Array = []
+		for pair in pairs:
+			var a := str(pair[0])
+			var b := str(pair[1])
+			var result := _european_match(a, b, comp)
+			var winner := a if int(result.hg) > int(result.ag) else b if int(result.ag) > int(result.hg) else _playoff_match_winner(a, b)
+			finalists.append(winner)
+			comp["history"].append({"phase":"semi","home":a,"away":b,"hg":result.hg,"ag":result.ag,"winner":winner})
+		comp["finalists"] = finalists
+		comp["phase"] = "final"
+	elif phase == "final":
+		var finalists: Array = comp.get("finalists", [])
+		if finalists.size() >= 2:
+			var a := str(finalists[0])
+			var b := str(finalists[1])
+			var result := _european_match(a, b, comp)
+			var winner := a if int(result.hg) > int(result.ag) else b if int(result.ag) > int(result.hg) else _playoff_match_winner(a, b)
+			comp["winner"] = winner
+			comp["phase"] = "done"
+			comp["history"].append({"phase":"final","home":a,"away":b,"hg":result.hg,"ag":result.ag,"winner":winner})
+			if winner == club_name:
+				cash += 12000000 if key == "UEFA Champions League" else 7000000 if key == "UEFA Europa League" else 4000000
+				board_confidence = mini(100, board_confidence + 20)
+				european_status = "CAMPIONE D'EUROPA: " + key
+	_save_game()
+	if not match_report.is_empty() and match_report.get("home", "") == club_name or match_report.get("away", "") == club_name:
+		_show_match_report()
+	else:
+		_show_uefa()
+
+func _show_uefa() -> void:
+	_clear_content()
+	_label("COMPETIZIONI UEFA", 23)
+	_label("Champions League, Europa League e Conference League. Ogni competizione ha due gruppi da quattro, semifinali e finale.")
+	_label("Tua qualificazione: " + (qualified_european_comp if qualified_european_comp != "" else "Non qualificato questa stagione"))
+	for key in ["UEFA Champions League","UEFA Europa League","UEFA Conference League"]:
+		if not european_competitions.has(key): continue
+		var comp: Dictionary = european_competitions[key]
+		_label(str(key), 19)
+		_label("Fase: " + str(comp.get("phase", "groups")).to_upper() + " • Turno gruppi " + str(comp.get("round", 0)) + "/3")
+		if str(comp.get("winner", "")) != "":
+			_label("Vincitore: " + str(comp.get("winner", "")))
+		for group_index in range(comp.get("groups", []).size()):
+			_label("GRUPPO " + ("A" if group_index == 0 else "B"), 16)
+			for team in _group_standings(comp.groups[group_index], comp):
+				_label(str(team.get("name", "")) + " • " + str(team.get("pts", 0)) + " pt • GF " + str(team.get("gf", 0)) + " GS " + str(team.get("ga", 0)))
+		if str(comp.get("phase", "")) != "done":
+			var comp_key: String = key
+			var action := "Gioca prossimo turno" if str(comp.get("phase", "")) == "groups" else "Gioca " + str(comp.get("phase", ""))
+			_button(action + " — " + key, func(): _play_european_round(comp_key))
+	_button("Torna alle coppe", func(): _show_tab("Coppe"))
 
