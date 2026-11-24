@@ -88,29 +88,37 @@ func _draw_pitch(area: Rect2) -> void:
 	var box_h := area.size.y * 0.54
 	draw_rect(Rect2(Vector2(area.position.x, center.y - box_h * 0.5), Vector2(box_w, box_h)), WHITE, false, 2)
 	draw_rect(Rect2(Vector2(area.end.x - box_w, center.y - box_h * 0.5), Vector2(box_w, box_h)), WHITE, false, 2)
-	# Subtle broadcast-style crowd/player shadows and tactical markers.
+	# Broadcast-style animated player markers: shirt silhouettes, numbers and shadows.
 	var drift := sin(elapsed * 1.8) * 0.018
+	var font := ThemeDB.fallback_font
 	for i in range(11):
 		var row := int(i / 4)
 		var col := i % 4
-		var x := 0.10 + float(col) * 0.095 + drift
-		var y := 0.18 + float(row) * 0.31 + (0.05 if col % 2 == 0 else -0.03)
+		var x := 0.10 + float(col) * 0.095 + drift + sin(elapsed * 0.9 + float(i)) * 0.008
+		var y := 0.18 + float(row) * 0.31 + (0.05 if col % 2 == 0 else -0.03) + cos(elapsed * 0.8 + float(i) * 0.7) * 0.009
 		var point := Vector2(area.position.x + x * area.size.x, area.position.y + y * area.size.y)
-		draw_circle(point + Vector2(0, 4), 9, Color(0, 0, 0, 0.24))
-		draw_circle(point, 7, CYAN)
-		draw_circle(point + Vector2(-2, -2), 2, Color("#ffffff", 0.7))
+		draw_ellipse(point + Vector2(0, 8), Vector2(10, 4), Color(0, 0, 0, 0.25))
+		draw_circle(point, 12, Color("#d8fbff"))
+		draw_colored_polygon(PackedVector2Array([point+Vector2(-8,-5),point+Vector2(-4,-10),point+Vector2(4,-10),point+Vector2(8,-5),point+Vector2(6,8),point+Vector2(-6,8)]), CYAN)
+		draw_line(point + Vector2(-5, -5), point + Vector2(5, -5), Color("#ffffff", 0.8), 1.2)
+		draw_string(font, point + Vector2(0, 4), str(i + 1), HORIZONTAL_ALIGNMENT_CENTER, 18, 8, Color("#082033"))
 	for i in range(11):
 		var row := int(i / 4)
 		var col := i % 4
-		var x := 0.90 - float(col) * 0.095 - drift
-		var y := 0.18 + float(row) * 0.31 + (0.05 if col % 2 == 0 else -0.03)
+		var x := 0.90 - float(col) * 0.095 - drift - sin(elapsed * 0.9 + float(i) * 0.8) * 0.008
+		var y := 0.18 + float(row) * 0.31 + (0.05 if col % 2 == 0 else -0.03) + cos(elapsed * 0.8 + float(i) * 0.65) * 0.009
 		var point := Vector2(area.position.x + x * area.size.x, area.position.y + y * area.size.y)
-		draw_circle(point + Vector2(0, 4), 9, Color(0, 0, 0, 0.24))
-		draw_circle(point, 7, RED)
-		draw_circle(point + Vector2(-2, -2), 2, Color("#ffffff", 0.7))
+		draw_ellipse(point + Vector2(0, 8), Vector2(10, 4), Color(0, 0, 0, 0.25))
+		draw_circle(point, 12, Color("#ffe0e5"))
+		draw_colored_polygon(PackedVector2Array([point+Vector2(-8,-5),point+Vector2(-4,-10),point+Vector2(4,-10),point+Vector2(8,-5),point+Vector2(6,8),point+Vector2(-6,8)]), RED)
+		draw_line(point + Vector2(-5, -5), point + Vector2(5, -5), Color("#ffffff", 0.8), 1.2)
+		draw_string(font, point + Vector2(0, 4), str(i + 1), HORIZONTAL_ALIGNMENT_CENTER, 18, 8, Color("#3a111d"))
 	var ball := Vector2(area.position.x + ball_position.x * area.size.x, area.position.y + ball_position.y * area.size.y)
-	draw_circle(ball + Vector2(0, 2), 8, Color(0, 0, 0, 0.3))
-	draw_circle(ball, 5, Color("#ffffff"))
+	for trail in range(4, 0, -1):
+		var offset := Vector2(float(trail) * 4.0, sin(elapsed * 1.8 - float(trail) * 0.22) * 3.0)
+		draw_circle(ball - offset, maxf(1.0, 4.5 - float(trail)), Color("#ffffff", 0.10 + 0.07 * float(4 - trail)))
+	draw_ellipse(ball + Vector2(0, 3), Vector2(9, 4), Color(0, 0, 0, 0.32))
+	draw_circle(ball, 6, Color("#ffffff"))
 	draw_arc(ball, 7, 0, TAU, 20, Color("#1b2735"), 1.2)
 
 func _draw() -> void:
@@ -120,6 +128,20 @@ func _draw() -> void:
 	_draw_stands(stand_area)
 	var pitch_area := Rect2(Vector2(8, size.y * 0.255), Vector2(maxf(1, size.x - 16), size.y * 0.70))
 	_draw_pitch(pitch_area)
+	# Compact TV-style scoreboard floating over the stadium panorama.
+	var score_rect := Rect2(size.x * 0.13, 8, size.x * 0.74, 48)
+	draw_rect(score_rect, Color("#071321", 0.94), true)
+	draw_rect(score_rect, Color("#d6b66f", 0.72), false, 1.2)
+	var home_name := str(report.get("home", "CASA"))
+	var away_name := str(report.get("away", "TRASFERTA"))
+	var home_score := str(report.get("home_goals", 0))
+	var away_score := str(report.get("away_goals", 0))
+	var font := ThemeDB.fallback_font
+	draw_string(font, Vector2(score_rect.position.x + 12, score_rect.position.y + 30), home_name.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, score_rect.size.x * 0.31, 13, Color("#e8f2fb"))
+	draw_string(font, Vector2(score_rect.position.x + score_rect.size.x * 0.38, score_rect.position.y + 32), home_score + "  —  " + away_score, HORIZONTAL_ALIGNMENT_CENTER, score_rect.size.x * 0.24, 21, Color("#ffffff"))
+	draw_string(font, Vector2(score_rect.end.x - score_rect.size.x * 0.31, score_rect.position.y + 30), away_name.to_upper(), HORIZONTAL_ALIGNMENT_RIGHT, score_rect.size.x * 0.29, 13, Color("#e8f2fb"))
+	var minute := mini(90, int(elapsed * 3.0))
+	draw_string(font, Vector2(score_rect.get_center().x - 24, score_rect.end.y - 4), str(minute) + "′", HORIZONTAL_ALIGNMENT_CENTER, 48, 9, Color("#e7bd68"))
 	if celebration > 0.0:
 		var alpha := minf(0.75, celebration * 0.6)
 		draw_rect(pitch_area, Color("#ffd36a", alpha * 0.12), true)
