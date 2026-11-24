@@ -63,6 +63,13 @@ func _run_smoke_test() -> void:
 	if game.selected_tab != "Allenamento":
 		_fail("dedicated training centre did not open from navigation")
 		return
+	game._show_tab("Tattiche")
+	await process_frame
+	if game.selected_tab != "Tattiche":
+		_fail("dedicated tactics screen did not open from navigation")
+		return
+	game._show_tab("Allenamento")
+	await process_frame
 	game._train_squad()
 	var trained_player: Dictionary = {}
 	for squad_player in game.players:
