@@ -41,6 +41,31 @@ func _run_smoke_test() -> void:
 	if game.european_competitions.size() != 3:
 		_fail("UEFA competitions did not initialize")
 		return
+	var real_market_count: int = game.market.filter(func(p): return bool(p.get("real_player", false))).size()
+	if real_market_count == 0:
+		_fail("transfer market did not include real imported players")
+		return
+	game._show_formation()
+	await process_frame
+	var pitch_node: Control = null
+	for child in game.content.get_children():
+		if child.get_script() == load("res://scripts/tactical_pitch.gd"):
+			pitch_node = child
+			break
+	if pitch_node == null:
+		_fail("interactive tactical pitch did not load")
+		return
+	var lineup_before: Array = game.lineup_ids.duplicate()
+	pitch_node.slots_swapped.emit(0, 1)
+	if int(game.lineup_ids[0]) != int(lineup_before[1]) or int(game.lineup_ids[1]) != int(lineup_before[0]):
+		_fail("tactical pitch swap signal did not update the lineup")
+		return
+	game._show_society()
+	var training_level := int(game.facilities.get("training", 1))
+	game._upgrade_facility("training")
+	if int(game.facilities.get("training", 1)) != training_level + 1:
+		_fail("club facility upgrade did not apply")
+		return
 	game._play_matchday()
 	await process_frame
 	if game.match_report.is_empty():
