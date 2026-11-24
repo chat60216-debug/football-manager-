@@ -35,10 +35,14 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp data/real_rosters.json /tmp/real_rosters.json
+          git fetch origin main
+          git reset --hard origin/main
+          cp /tmp/real_rosters.json data/real_rosters.json
           git add data/real_rosters.json
           if git diff --cached --quiet; then
             echo "Roster database is already current."
           else
             git commit -m "Update real 2026/27 club squads"
-            git push
+            git push origin HEAD:main
           fi
